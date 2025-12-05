@@ -65,14 +65,14 @@ pub const Block = struct {
   }
 
   pub fn update(self: *Block) void {
-    const new_pos = Vec2.init(self.pos.x + self.vel.x, self.pos.y + self.vel.y);
-    if (new_pos.x > 0 and new_pos.y > 0 and new_pos.x + self.size.x <= WINDOW_WIDTH and new_pos.y + self.size.y <= WINDOW_HEIGHT) {
-      self.pos = self.pos.add(self.vel);
-    }
+    self.pos.x += self.vel.x;
+    self.pos.y += self.vel.y;
+    self.pos.x = std.math.clamp(self.pos.x, 0, WINDOW_WIDTH - self.size.x);
+    self.pos.y = std.math.clamp(self.pos.y, 0, WINDOW_HEIGHT - self.size.y);
   }
 
   pub fn bounce(self: *Block) void {
-    const new_pos = Vec2.init(self.pos.x + self.vel.x, self.pos.y + self.vel.x);
+    const new_pos = Vec2.init(self.pos.x + self.vel.x, self.pos.y + self.vel.y);
     if(new_pos.x <= 0 or new_pos.x + self.size.x >= WINDOW_WIDTH){
       self.vel.x = -self.vel.x;
     }
@@ -80,7 +80,6 @@ pub const Block = struct {
     if(new_pos.y <= 0 or new_pos.y + self.size.y >= WINDOW_HEIGHT) {
       self.vel.y = -self.vel.y;
     }
-
     self.update();
   }
 
@@ -98,23 +97,41 @@ pub const Block = struct {
   }
 };
 
+const EntityType = enum { Player, Enemy, Bullet, Obstacle };
+const Entity = struct {
+  block: Block,
+  kind: EntityType,
+  health: i32 = 0,
+
+  pub fn init(block: Block, kind: EntityType, health: i32) Entity {
+    return .{
+      .block = block,
+      .kind = kind,
+      .health = health,
+    };
+  }
+};
+
 pub fn main() !void {
   rl.initWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Zig/Raylib Engine");
   defer rl.closeWindow();
   rl.setTargetFPS(60);
   const title_pos = Vec2.init(10,10);
 
-  var player = Block.init(100, 100, 50, 50, DB16.YELLOW);
-  var enemy = Block.init(200, 200, 50, 50, DB16.PINK);
+  var player = Entity.init(Block.init(100, 100, 50, 50, DB16.BLACK), EntityType.Player, 100);
+  var enemy = Entity.init(Block.init(200, 200, 50, 50, DB16.PINK), EntityType.Enemy, 10);
+  var enemy2 = Entity.init(Block.init(300, 300, 50, 50, DB16.PINK), EntityType.Enemy, 10);
 
-  player.setVelocity(1, 0);
-  enemy.setVelocity(-1, 0);
+  player.block.setVelocity(2, -3);
+  enemy.block.setVelocity(-2, -3);
+  enemy2.block.setVelocity(3, -4);
 
   while(rl.windowShouldClose() == false) {
-    player.update();
-    enemy.bounce();
+    player.block.bounce();
+    enemy.block.bounce();
+    enemy2.block.bounce();
 
-    const colliding = player.collideWidth(enemy);
+    const colliding = player.block.collideWidth(enemy.block) or player.block.collideWidth(enemy2.block);
 
     rl.beginDrawing();
     defer rl.endDrawing();
@@ -123,8 +140,9 @@ pub fn main() !void {
     rl.drawRectangle(title_pos.x-8, title_pos.y-8, 256, 32, DB16.YELLOW);
     rl.drawText("Zig/Raylib Engine", title_pos.x, title_pos.y, 20, DB16.BLUE);
 
-    player.draw();
-    enemy.draw();
+    player.block.draw();
+    enemy.block.draw();
+    enemy2.block.draw();
 
     if (colliding) {
       rl.drawText("COLLISION!", 250, 60, 32, DB16.RED);
