@@ -23,12 +23,12 @@ pub const DB16 = struct {
 };
 
 const Vec2 = struct {
-    x: i32,
-    y: i32,
+    x: f32,
+    y: f32,
 
     pub fn init(
-        x: i32,
-        y: i32,
+        x: f32,
+        y: f32,
     ) Vec2 {
         return .{ .x = x, .y = y };
     }
@@ -36,57 +36,85 @@ const Vec2 = struct {
     pub fn add(self: Vec2, other: Vec2) Vec2 {
         return .{ .x = self.x + other.x, .y = self.y + other.y };
     }
+
+    pub fn mul(self: Vec2, other: Vec2) Vec2 {
+        return .{ .x = self.x * other.x, .y = self.y * other.y };
+    }
+};
+
+pub const IVec2 = struct {
+    x: i32,
+    y: i32,
+
+    pub fn init(
+        x: i32,
+        y: i32,
+    ) IVec2 {
+        return .{ .x = x, .y = y };
+    }
+
+    pub fn add(self: IVec2, other: IVec2) IVec2 {
+        return .{ .x = self.x + other.x, .y = self.y + other.y };
+    }
+
+    pub fn mul(self: IVec2, other: IVec2) IVec2 {
+        return .{ .x = self.x * other.x, .y = self.y * other.y };
+    }
 };
 
 pub const Block = struct {
     pos: Vec2,
-    size: Vec2,
+    size: IVec2,
     vel: Vec2 = Vec2.init(0, 0),
     color: rl.Color,
-    base_color: rl.Color,
 
-    pub fn init(x: i32, y: i32, w: i32, h: i32, color: rl.Color) Block {
+    pub fn init(x: f32, y: f32, w: i32, h: i32, color: rl.Color) Block {
         return .{
             .pos = Vec2.init(x, y),
-            .size = Vec2.init(w, h),
+            .size = IVec2.init(w, h),
             .color = color,
-            .base_color = color,
         };
     }
 
     pub fn getRect(self: Block) struct { x: i32, y: i32, w: i32, h: i32 } {
         return .{
-            .x = self.pos.x,
-            .y = self.pos.y,
+            .x = @intFromFloat(self.pos.x),
+            .y = @intFromFloat(self.pos.y),
             .w = self.size.x,
             .h = self.size.y,
         };
     }
 
     pub fn draw(self: Block) void {
-        rl.drawRectangle(self.pos.x, self.pos.y, self.size.x, self.size.y, self.color);
+        rl.drawRectangle(@intFromFloat(self.pos.x), @intFromFloat(self.pos.y), self.size.x, self.size.y, self.color);
     }
 
-    pub fn update(self: *Block) void {
-        self.pos.x += self.vel.x;
-        self.pos.y += self.vel.y;
-        self.pos.x = std.math.clamp(self.pos.x, 0, WINDOW_WIDTH - self.size.x);
-        self.pos.y = std.math.clamp(self.pos.y, 0, WINDOW_HEIGHT - self.size.y);
-    }
+    pub fn update(self: *Block, dt: f32) void {
+        const new_pos = self.pos.add(.{ .x = self.vel.x * dt, .y = self.vel.y * dt });
+        const window_w: f32 = @floatFromInt(WINDOW_WIDTH);
+        const window_h: f32 = @floatFromInt(WINDOW_HEIGHT);
+        const size_w: f32 = @floatFromInt(self.size.x);
+        const size_h: f32 = @floatFromInt(self.size.y);
 
-    pub fn bounce(self: *Block) void {
-        const new_pos = Vec2.init(self.pos.x + self.vel.x, self.pos.y + self.vel.y);
-        if (new_pos.x <= 0 or new_pos.x + self.size.x >= WINDOW_WIDTH) {
+        if (new_pos.x <= 0 or new_pos.x + size_w >= window_w) {
             self.vel.x = -self.vel.x;
         }
 
-        if (new_pos.y <= 0 or new_pos.y + self.size.y >= WINDOW_HEIGHT) {
+        if (new_pos.y <= 0 or new_pos.y + size_h >= window_h) {
             self.vel.y = -self.vel.y;
         }
-        self.update();
+
+        self.pos = self.pos.add(.{ .x = self.vel.x * dt, .y = self.vel.y * dt });
+        self.pos.x = std.math.clamp(self.pos.x, 0.0, window_w - size_w);
+        self.pos.y = std.math.clamp(self.pos.y, 0.0, window_h - size_h);
     }
 
-    pub fn setVelocity(self: *Block, vx: i32, vy: i32) void {
+    pub fn bounceOff(self: *Block) void {
+        self.vel.x = -self.vel.x;
+        self.vel.y = -self.vel.y;
+    }
+
+    pub fn setVelocity(self: *Block, vx: f32, vy: f32) void {
         self.vel = Vec2.init(vx, vy);
     }
 
@@ -100,8 +128,8 @@ pub const Block = struct {
     }
 };
 
-const EntityType = enum { Player, Enemy, Bullet, Obstacle };
-const Entity = struct {
+pub const EntityType = enum { Player, Enemy, Bullet, Obstacle };
+pub const Entity = struct {
     block: Block,
     kind: EntityType,
     health: i32 = 0,
@@ -118,21 +146,22 @@ const Entity = struct {
 pub fn main() !void {
     rl.initWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Zig/Raylib Engine");
     defer rl.closeWindow();
+
     rl.setTargetFPS(60);
-    const title_pos = Vec2.init(10, 10);
 
-    var player = Entity.init(Block.init(100, 100, 50, 50, DB16.BLACK), EntityType.Player, 100);
-    var enemy = Entity.init(Block.init(200, 200, 50, 50, DB16.PINK), EntityType.Enemy, 10);
-    var enemy2 = Entity.init(Block.init(300, 300, 50, 50, DB16.PINK), EntityType.Enemy, 10);
+    var player = Entity.init(Block.init(100, 100, 24, 24, DB16.BLACK), EntityType.Player, 100);
+    var enemy = Entity.init(Block.init(200, 200, 12, 12, DB16.PURPLE), EntityType.Enemy, 10);
+    var enemy2 = Entity.init(Block.init(300, 300, 12, 12, DB16.ORANGE), EntityType.Enemy, 10);
 
-    player.block.setVelocity(2, -3);
-    enemy.block.setVelocity(-2, -3);
-    enemy2.block.setVelocity(3, -4);
+    player.block.setVelocity(20.0, -30.0);
+    enemy.block.setVelocity(-40.0, -80.0);
+    enemy2.block.setVelocity(60.0, -40.0);
 
     while (rl.windowShouldClose() == false) {
-        player.block.bounce();
-        enemy.block.bounce();
-        enemy2.block.bounce();
+        const dt: f32 = rl.getFrameTime();
+        player.block.update(dt);
+        enemy.block.update(dt);
+        enemy2.block.update(dt);
 
         const colliding = player.block.collidesWidth(enemy.block) or player.block.collidesWidth(enemy2.block);
 
@@ -140,15 +169,16 @@ pub fn main() !void {
         defer rl.endDrawing();
 
         rl.clearBackground(DB16.LIGHT_BLUE);
-        rl.drawRectangle(title_pos.x - 8, title_pos.y - 8, 256, 32, DB16.YELLOW);
-        rl.drawText("Zig/Raylib Engine", title_pos.x, title_pos.y, 20, DB16.BLUE);
+
+        rl.drawRectangle(2, 2, WINDOW_WIDTH - 2, 32, DB16.YELLOW);
+        rl.drawText("Zig/Raylib Engine", 8, 8, 20, DB16.BLUE);
 
         player.block.draw();
         enemy.block.draw();
         enemy2.block.draw();
 
         if (colliding) {
-            rl.drawText("COLLISION!", 250, 60, 32, DB16.RED);
+            player.block.bounceOff();
         }
     }
 }
