@@ -76,13 +76,18 @@ pub const Block = struct {
     speed: f32 = 0.0,
     color: rl.Color = rl.Color.white,
     tex: rl.Texture,
+    tex2: rl.Texture,
+    flying: bool = false,
+    frame: i8 = 0,
 
-    pub fn init(x: f32, y: f32, w: i32, h: i32, speed: f32, tex: rl.Texture) Block {
+    pub fn init(x: f32, y: f32, w: i32, h: i32, speed: f32, tex: rl.Texture, tex2: rl.Texture, flying: bool) Block {
         return .{
             .pos = Vec2.init(x, y),
             .size = IVec2.init(w, h),
             .speed = speed,
             .tex = tex,
+            .tex2 = tex2,
+            .flying = flying,
         };
     }
 
@@ -96,11 +101,14 @@ pub const Block = struct {
     }
 
     pub fn draw(self: Block) void {
-        rl.drawTexture(self.tex, @intFromFloat(self.pos.x), @intFromFloat(self.pos.y), self.color);
+        const t = if (self.frame > 8) self.tex2 else self.tex;
+        var w: f32 = @floatFromInt(self.size.x);
+        if (self.vel.x < 0) w *= -1.0;
+        rl.drawTextureRec(t, .{ .x = 0, .y = 0, .width = w, .height = @floatFromInt(self.size.y) }, rl.Vector2.init(self.pos.x, self.pos.y), self.color);
     }
 
     pub fn update(self: *Block, dt: f32) void {
-        self.vel.y += GRAVITY * dt;
+        if (!self.flying) self.vel.y += GRAVITY * dt;
         const new_pos = self.pos.add(.{ .x = self.vel.x * dt, .y = self.vel.y * dt });
         const window_w: f32 = @floatFromInt(WINDOW_WIDTH);
         const window_h: f32 = @floatFromInt(WINDOW_HEIGHT);
@@ -118,6 +126,14 @@ pub const Block = struct {
         self.pos = self.pos.add(.{ .x = self.vel.x * dt, .y = self.vel.y * dt });
         self.pos.x = std.math.clamp(self.pos.x, 0.0, window_w - size_w);
         self.pos.y = std.math.clamp(self.pos.y, 0.0, window_h - size_h);
+
+        if (self.flying) {
+            self.vel.x *= 0.98;
+            self.vel.y *= 0.98;
+        }
+
+        self.frame += 1;
+        self.frame = @mod(self.frame, 16);
     }
 
     pub fn bounceOff(self: *Block) void {
@@ -166,25 +182,40 @@ pub fn main() !void {
     defer rl.closeWindow();
 
     rl.setTargetFPS(60);
-    const bg_img = try rl.loadImage("assets/bg_1.gif"); // Loaded in CPU memory (RAM)
+    const bg_img = try rl.loadImageFromMemory(".gif", @embedFile("bg_1")); // Loaded in CPU memory (RAM)
     const bg_texture = try rl.loadTextureFromImage(bg_img); // Image converted to texture, GPU memory (VRAM)
     defer rl.unloadImage(bg_img);
     defer rl.unloadTexture(bg_texture);
 
-    const fly_img = try rl.loadImage("assets/fly.gif"); // Loaded in CPU memory (RAM)
+    const palm_img = try rl.loadImageFromMemory(".gif", @embedFile("palm")); // Loaded in CPU memory (RAM)
+    const palm_texture = try rl.loadTextureFromImage(palm_img); // Image converted to texture, GPU memory (VRAM)
+    defer rl.unloadImage(palm_img);
+    defer rl.unloadTexture(palm_texture);
+
+    const bush_img = try rl.loadImageFromMemory(".gif", @embedFile("bush")); // Loaded in CPU memory (RAM)
+    const bush_texture = try rl.loadTextureFromImage(bush_img); // Image converted to texture, GPU memory (VRAM)
+    defer rl.unloadImage(bush_img);
+    defer rl.unloadTexture(bush_texture);
+
+    const fly_img = try rl.loadImageFromMemory(".gif", @embedFile("fly")); // Loaded in CPU memory (RAM)
     const fly_texture = try rl.loadTextureFromImage(fly_img); // Image converted to texture, GPU memory (VRAM)
     defer rl.unloadImage(fly_img);
     defer rl.unloadTexture(fly_texture);
 
-    const apple_img = try rl.loadImage("assets/apple.gif"); // Loaded in CPU memory (RAM)
+    const fly2_img = try rl.loadImageFromMemory(".gif", @embedFile("fly2")); // Loaded in CPU memory (RAM)
+    const fly2_texture = try rl.loadTextureFromImage(fly2_img); // Image converted to texture, GPU memory (VRAM)
+    defer rl.unloadImage(fly2_img);
+    defer rl.unloadTexture(fly2_texture);
+
+    const apple_img = try rl.loadImageFromMemory(".gif", @embedFile("apple")); // Loaded in CPU memory (RAM)
     const apple_texture = try rl.loadTextureFromImage(apple_img); // Image converted to texture, GPU memory (VRAM)
     defer rl.unloadImage(apple_img);
     defer rl.unloadTexture(apple_texture);
 
     // var terrain = Terrain.init();
-    var player = Entity.init(Block.init(100, 100, 24, 24, 100.0, fly_texture), EntityType.Player, 100);
-    var enemy = Entity.init(Block.init(200, 200, 12, 12, 50.0, apple_texture), EntityType.Enemy, 10);
-    var enemy2 = Entity.init(Block.init(300, 300, 12, 12, 50.0, apple_texture), EntityType.Enemy, 10);
+    var player = Entity.init(Block.init(100, 100, 32, 32, 200.0, fly_texture, fly2_texture, true), EntityType.Player, 100);
+    var enemy = Entity.init(Block.init(200, 200, 32, 32, 50.0, apple_texture, apple_texture, false), EntityType.Enemy, 10);
+    var enemy2 = Entity.init(Block.init(300, 300, 32, 32, 50.0, apple_texture, apple_texture, false), EntityType.Enemy, 10);
 
     enemy.block.setVelocity(-40.0, -80.0);
     enemy2.block.setVelocity(60.0, -40.0);
@@ -207,6 +238,18 @@ pub fn main() !void {
         defer rl.endDrawing();
 
         rl.drawTexture(bg_texture, 0, 0, rl.Color.white);
+
+        rl.drawTexture(palm_texture, 24, WINDOW_HEIGHT - 128, rl.Color.white);
+        rl.drawTexture(palm_texture, 124, WINDOW_HEIGHT - 112, rl.Color.init(192, 192, 192, 255));
+        rl.drawTexture(palm_texture, 224, WINDOW_HEIGHT - 96, rl.Color.white);
+        rl.drawTexture(palm_texture, 324, WINDOW_HEIGHT - 128, rl.Color.init(192, 192, 192, 255));
+
+        rl.drawTexture(bush_texture, -8, WINDOW_HEIGHT - 48, rl.Color.white);
+        rl.drawTexture(bush_texture, 96, WINDOW_HEIGHT - 32, rl.Color.init(192, 192, 192, 255));
+        rl.drawTexture(bush_texture, 140, WINDOW_HEIGHT - 40, rl.Color.white);
+        rl.drawTexture(bush_texture, 300, WINDOW_HEIGHT - 48, rl.Color.init(192, 192, 192, 255));
+        rl.drawTexture(bush_texture, 480, WINDOW_HEIGHT - 48, rl.Color.white);
+        rl.drawTexture(bush_texture, 560, WINDOW_HEIGHT - 32, rl.Color.init(192, 192, 192, 255));
 
         // rl.clearBackground(DB16.LIGHT_BLUE);
         // terrain.draw();

@@ -22,6 +22,25 @@ pub fn build(b: *std.Build) void {
     });
 
     exe.linkLibrary(raylib_artifact);
+    exe.root_module.addAnonymousImport("bg_1", .{
+        .root_source_file = b.path("assets/bg_1.gif"),
+    });
+    exe.root_module.addAnonymousImport("palm", .{
+        .root_source_file = b.path("assets/palm.gif"),
+    });
+    exe.root_module.addAnonymousImport("bush", .{
+        .root_source_file = b.path("assets/bush.gif"),
+    });
+    exe.root_module.addAnonymousImport("fly", .{
+        .root_source_file = b.path("assets/fly.gif"),
+    });
+    exe.root_module.addAnonymousImport("fly2", .{
+        .root_source_file = b.path("assets/fly2.gif"),
+    });
+    exe.root_module.addAnonymousImport("apple", .{
+        .root_source_file = b.path("assets/apple.gif"),
+    });
+
     exe.root_module.addImport("raylib", raylib);
     exe.root_module.addImport("raygui", raygui);
 
