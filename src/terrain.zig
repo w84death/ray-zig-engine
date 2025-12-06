@@ -1,3 +1,6 @@
+const TERRAIN_WIDTH = 256;
+const TERRAIN_HEIGHT = 256;
+
 pub const CellType = enum {
     Empty,
     Wall,

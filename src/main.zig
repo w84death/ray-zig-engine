@@ -3,8 +3,6 @@ const rl = @import("raylib");
 
 const WINDOW_WIDTH = 640;
 const WINDOW_HEIGHT = 480;
-const TERRAIN_WIDTH = 256;
-const TERRAIN_HEIGHT = 256;
 const GRAVITY = 98.1;
 
 pub const DB16 = struct {
@@ -76,14 +74,15 @@ pub const Block = struct {
     vel: Vec2 = Vec2.init(0, 0),
     max_vel: f32 = 250.0,
     speed: f32 = 0.0,
-    color: rl.Color,
+    color: rl.Color = rl.Color.white,
+    tex: rl.Texture,
 
-    pub fn init(x: f32, y: f32, w: i32, h: i32, speed: f32, color: rl.Color) Block {
+    pub fn init(x: f32, y: f32, w: i32, h: i32, speed: f32, tex: rl.Texture) Block {
         return .{
             .pos = Vec2.init(x, y),
             .size = IVec2.init(w, h),
             .speed = speed,
-            .color = color,
+            .tex = tex,
         };
     }
 
@@ -97,7 +96,7 @@ pub const Block = struct {
     }
 
     pub fn draw(self: Block) void {
-        rl.drawRectangle(@intFromFloat(self.pos.x), @intFromFloat(self.pos.y), self.size.x, self.size.y, self.color);
+        rl.drawTexture(self.tex, @intFromFloat(self.pos.x), @intFromFloat(self.pos.y), self.color);
     }
 
     pub fn update(self: *Block, dt: f32) void {
@@ -167,11 +166,25 @@ pub fn main() !void {
     defer rl.closeWindow();
 
     rl.setTargetFPS(60);
+    const bg_img = try rl.loadImage("assets/bg_1.gif"); // Loaded in CPU memory (RAM)
+    const bg_texture = try rl.loadTextureFromImage(bg_img); // Image converted to texture, GPU memory (VRAM)
+    defer rl.unloadImage(bg_img);
+    defer rl.unloadTexture(bg_texture);
+
+    const fly_img = try rl.loadImage("assets/fly.gif"); // Loaded in CPU memory (RAM)
+    const fly_texture = try rl.loadTextureFromImage(fly_img); // Image converted to texture, GPU memory (VRAM)
+    defer rl.unloadImage(fly_img);
+    defer rl.unloadTexture(fly_texture);
+
+    const apple_img = try rl.loadImage("assets/apple.gif"); // Loaded in CPU memory (RAM)
+    const apple_texture = try rl.loadTextureFromImage(apple_img); // Image converted to texture, GPU memory (VRAM)
+    defer rl.unloadImage(apple_img);
+    defer rl.unloadTexture(apple_texture);
 
     // var terrain = Terrain.init();
-    var player = Entity.init(Block.init(100, 100, 24, 24, 100.0, DB16.BLACK), EntityType.Player, 100);
-    var enemy = Entity.init(Block.init(200, 200, 12, 12, 50.0, DB16.PURPLE), EntityType.Enemy, 10);
-    var enemy2 = Entity.init(Block.init(300, 300, 12, 12, 50.0, DB16.ORANGE), EntityType.Enemy, 10);
+    var player = Entity.init(Block.init(100, 100, 24, 24, 100.0, fly_texture), EntityType.Player, 100);
+    var enemy = Entity.init(Block.init(200, 200, 12, 12, 50.0, apple_texture), EntityType.Enemy, 10);
+    var enemy2 = Entity.init(Block.init(300, 300, 12, 12, 50.0, apple_texture), EntityType.Enemy, 10);
 
     enemy.block.setVelocity(-40.0, -80.0);
     enemy2.block.setVelocity(60.0, -40.0);
@@ -193,8 +206,9 @@ pub fn main() !void {
         rl.beginDrawing();
         defer rl.endDrawing();
 
-        rl.clearBackground(DB16.LIGHT_BLUE);
+        rl.drawTexture(bg_texture, 0, 0, rl.Color.white);
 
+        // rl.clearBackground(DB16.LIGHT_BLUE);
         // terrain.draw();
 
         rl.drawRectangle(2, 2, 38, 32, DB16.YELLOW);
