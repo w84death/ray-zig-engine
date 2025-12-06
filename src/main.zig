@@ -1,6 +1,5 @@
 const std = @import("std");
 const rl = @import("raylib");
-
 const WINDOW_WIDTH = 640;
 const WINDOW_HEIGHT = 480;
 const GRAVITY = 98.1;
@@ -177,6 +176,27 @@ pub const Entity = struct {
     }
 };
 
+const PlantDef = struct {
+    texture: rl.Texture2D,
+};
+
+fn drawProceduralForest(camera_x: f32, defs: []const PlantDef, tint: rl.Color, density: f32, seed: u64) void {
+    const ground_y = WINDOW_HEIGHT;
+    var rng = std.Random.DefaultPrng.init(seed);
+    const rng_rand = rng.random();
+    const random = std.Random.float(rng_rand, f32);
+    var x: f32 = -200;
+    while (x < camera_x + WINDOW_WIDTH + 300) : (x += density + random * density) {
+        const kind_roll = std.Random.float(rng_rand, f32);
+        const l: f32 = @floatFromInt(defs.len);
+        const def = defs[@intFromFloat(kind_roll * l)];
+        const h: i32 = @intFromFloat(kind_roll * 24);
+        const y = ground_y - def.texture.height + h;
+        const screen_x: i32 = @intFromFloat(x - camera_x);
+        rl.drawTexture(def.texture, screen_x, y, tint);
+    }
+}
+
 pub fn main() !void {
     rl.initWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Zig/Raylib Engine");
     defer rl.closeWindow();
@@ -192,11 +212,30 @@ pub fn main() !void {
     defer rl.unloadImage(palm_img);
     defer rl.unloadTexture(palm_texture);
 
+    const palm2_img = try rl.loadImageFromMemory(".gif", @embedFile("palm2")); // Loaded in CPU memory (RAM)
+    const palm2_texture = try rl.loadTextureFromImage(palm2_img); // Image converted to texture, GPU memory (VRAM)
+    defer rl.unloadImage(palm2_img);
+    defer rl.unloadTexture(palm2_texture);
+
     const bush_img = try rl.loadImageFromMemory(".gif", @embedFile("bush")); // Loaded in CPU memory (RAM)
     const bush_texture = try rl.loadTextureFromImage(bush_img); // Image converted to texture, GPU memory (VRAM)
     defer rl.unloadImage(bush_img);
     defer rl.unloadTexture(bush_texture);
 
+    const bush2_img = try rl.loadImageFromMemory(".gif", @embedFile("bush2")); // Loaded in CPU memory (RAM)
+    const bush2_texture = try rl.loadTextureFromImage(bush2_img); // Image converted to texture, GPU memory (VRAM)
+    defer rl.unloadImage(bush2_img);
+    defer rl.unloadTexture(bush2_texture);
+
+    const plant_defs = [_]PlantDef{
+        .{ .texture = palm_texture },
+        .{ .texture = palm2_texture },
+    };
+
+    const plant_defs2 = [_]PlantDef{
+        .{ .texture = bush_texture },
+        .{ .texture = bush2_texture },
+    };
     const fly_img = try rl.loadImageFromMemory(".gif", @embedFile("fly")); // Loaded in CPU memory (RAM)
     const fly_texture = try rl.loadTextureFromImage(fly_img); // Image converted to texture, GPU memory (VRAM)
     defer rl.unloadImage(fly_img);
@@ -239,21 +278,6 @@ pub fn main() !void {
 
         rl.drawTexture(bg_texture, 0, 0, rl.Color.white);
 
-        rl.drawTexture(palm_texture, 24, WINDOW_HEIGHT - 128, rl.Color.white);
-        rl.drawTexture(palm_texture, 124, WINDOW_HEIGHT - 112, rl.Color.init(192, 192, 192, 255));
-        rl.drawTexture(palm_texture, 224, WINDOW_HEIGHT - 96, rl.Color.white);
-        rl.drawTexture(palm_texture, 324, WINDOW_HEIGHT - 128, rl.Color.init(192, 192, 192, 255));
-
-        rl.drawTexture(bush_texture, -8, WINDOW_HEIGHT - 48, rl.Color.white);
-        rl.drawTexture(bush_texture, 96, WINDOW_HEIGHT - 32, rl.Color.init(192, 192, 192, 255));
-        rl.drawTexture(bush_texture, 140, WINDOW_HEIGHT - 40, rl.Color.white);
-        rl.drawTexture(bush_texture, 300, WINDOW_HEIGHT - 48, rl.Color.init(192, 192, 192, 255));
-        rl.drawTexture(bush_texture, 480, WINDOW_HEIGHT - 48, rl.Color.white);
-        rl.drawTexture(bush_texture, 560, WINDOW_HEIGHT - 32, rl.Color.init(192, 192, 192, 255));
-
-        // rl.clearBackground(DB16.LIGHT_BLUE);
-        // terrain.draw();
-
         rl.drawRectangle(2, 2, 38, 32, DB16.YELLOW);
         var fps_buffer: [32]u8 = undefined;
         const fps_text = std.fmt.bufPrintZ(&fps_buffer, "{d}", .{rl.getFPS()}) catch "0";
@@ -264,12 +288,17 @@ pub fn main() !void {
         const health_text = std.fmt.bufPrintZ(&health_buffer, "{d}", .{player.health}) catch "0";
         rl.drawText(health_text, 54, 8, 20, DB16.BLACK);
 
+        drawProceduralForest(player.block.pos.x * 0.01, &plant_defs, rl.Color.init(192, 192, 192, 255), 50, 1444);
+        drawProceduralForest(player.block.pos.x * 0.02, &plant_defs2, rl.Color.init(192, 192, 192, 255), 32, 123);
         player.block.draw();
         enemy.block.draw();
         enemy2.block.draw();
+        drawProceduralForest(player.block.pos.x * 0.05, &plant_defs, rl.Color.white, 96, 3232);
+        drawProceduralForest(player.block.pos.x * 0.1, &plant_defs2, rl.Color.init(192, 192, 192, 255), 64, 123);
+        drawProceduralForest(player.block.pos.x * 0.15, &plant_defs2, rl.Color.white, 64, 432);
 
         if (colliding) {
-            player.block.bounceOff();
+            // player.block.bounceOff();
             player.health -= 1;
             if (player.health <= 0) {
                 player.block.pos = Vec2.init(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);

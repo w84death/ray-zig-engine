@@ -28,8 +28,14 @@ pub fn build(b: *std.Build) void {
     exe.root_module.addAnonymousImport("palm", .{
         .root_source_file = b.path("assets/palm.gif"),
     });
+    exe.root_module.addAnonymousImport("palm2", .{
+        .root_source_file = b.path("assets/palm2.gif"),
+    });
     exe.root_module.addAnonymousImport("bush", .{
         .root_source_file = b.path("assets/bush.gif"),
+    });
+    exe.root_module.addAnonymousImport("bush2", .{
+        .root_source_file = b.path("assets/bush2.gif"),
     });
     exe.root_module.addAnonymousImport("fly", .{
         .root_source_file = b.path("assets/fly.gif"),
