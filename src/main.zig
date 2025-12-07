@@ -3,6 +3,8 @@ const rl = @import("raylib");
 const WINDOW_WIDTH = 640;
 const WINDOW_HEIGHT = 480;
 const GRAVITY = 98.1;
+const SEED = 1337;
+const MUSIC_VOLUME = 0.4;
 
 pub const DB16 = struct {
     pub const BLACK = rl.Color{ .r = 20, .g = 12, .b = 28, .a = 255 };
@@ -78,8 +80,9 @@ pub const Block = struct {
     tex2: rl.Texture,
     flying: bool = false,
     frame: i8 = 0,
+    sfx: rl.Sound,
 
-    pub fn init(x: f32, y: f32, w: i32, h: i32, speed: f32, tex: rl.Texture, tex2: rl.Texture, flying: bool) Block {
+    pub fn init(x: f32, y: f32, w: i32, h: i32, speed: f32, tex: rl.Texture, tex2: rl.Texture, sfx: rl.Sound, flying: bool) Block {
         return .{
             .pos = Vec2.init(x, y),
             .size = IVec2.init(w, h),
@@ -87,6 +90,7 @@ pub const Block = struct {
             .tex = tex,
             .tex2 = tex2,
             .flying = flying,
+            .sfx = sfx,
         };
     }
 
@@ -113,13 +117,16 @@ pub const Block = struct {
         const window_h: f32 = @floatFromInt(WINDOW_HEIGHT);
         const size_w: f32 = @floatFromInt(self.size.x);
         const size_h: f32 = @floatFromInt(self.size.y);
+        var play_sfx = false;
 
         if (new_pos.x <= 0 or new_pos.x + size_w >= window_w) {
             self.vel.x = -self.vel.x;
+            play_sfx = true;
         }
 
         if (new_pos.y <= 0 or new_pos.y + size_h >= window_h) {
             self.vel.y = -self.vel.y;
+            play_sfx = true;
         }
 
         self.pos = self.pos.add(.{ .x = self.vel.x * dt, .y = self.vel.y * dt });
@@ -133,13 +140,7 @@ pub const Block = struct {
 
         self.frame += 1;
         self.frame = @mod(self.frame, 16);
-    }
-
-    pub fn bounceOff(self: *Block) void {
-        self.vel.x = -self.vel.x;
-        self.vel.y = -self.vel.y;
-        self.vel.x *= 0.25;
-        self.vel.y *= 0.25;
+        if (play_sfx) rl.playSound(self.sfx);
     }
 
     pub fn setVelocity(self: *Block, vx: f32, vy: f32) void {
@@ -176,12 +177,7 @@ pub const Entity = struct {
     }
 };
 
-const PlantDef = struct {
-    texture: rl.Texture2D,
-};
-
-fn drawProceduralForest(camera_x: f32, defs: []const PlantDef, tint: rl.Color, density: f32, seed: u64) void {
-    const ground_y = WINDOW_HEIGHT;
+fn drawProceduralSprites(camera_x: f32, ground_y: f32, defs: []const rl.Texture, tint: rl.Color, density: f32, seed: u64) void {
     var rng = std.Random.DefaultPrng.init(seed);
     const rng_rand = rng.random();
     const random = std.Random.float(rng_rand, f32);
@@ -190,10 +186,11 @@ fn drawProceduralForest(camera_x: f32, defs: []const PlantDef, tint: rl.Color, d
         const kind_roll = std.Random.float(rng_rand, f32);
         const l: f32 = @floatFromInt(defs.len);
         const def = defs[@intFromFloat(kind_roll * l)];
-        const h: i32 = @intFromFloat(kind_roll * 24);
-        const y = ground_y - def.texture.height + h;
+        const sprite_h: f32 = @floatFromInt(def.height);
+        const h: f32 = kind_roll * sprite_h * 0.75;
+        const y: i32 = @intFromFloat(ground_y - sprite_h + h);
         const screen_x: i32 = @intFromFloat(x - camera_x);
-        rl.drawTexture(def.texture, screen_x, y, tint);
+        rl.drawTexture(def, screen_x, y, tint);
     }
 }
 
@@ -201,66 +198,113 @@ pub fn main() !void {
     rl.initWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Zig/Raylib Engine");
     defer rl.closeWindow();
 
+    rl.initAudioDevice();
+    defer rl.closeAudioDevice();
+
     rl.setTargetFPS(60);
-    const bg_img = try rl.loadImageFromMemory(".gif", @embedFile("bg_1")); // Loaded in CPU memory (RAM)
-    const bg_texture = try rl.loadTextureFromImage(bg_img); // Image converted to texture, GPU memory (VRAM)
+
+    const bg_img = try rl.loadImage("assets/hd_bg_1.gif");
+    const bg_texture = try rl.loadTextureFromImage(bg_img);
     defer rl.unloadImage(bg_img);
     defer rl.unloadTexture(bg_texture);
 
-    const palm_img = try rl.loadImageFromMemory(".gif", @embedFile("palm")); // Loaded in CPU memory (RAM)
-    const palm_texture = try rl.loadTextureFromImage(palm_img); // Image converted to texture, GPU memory (VRAM)
+    const cloud_img = try rl.loadImage("assets/hd_cloud_1.gif");
+    const cloud_texture = try rl.loadTextureFromImage(cloud_img);
+    defer rl.unloadImage(cloud_img);
+    defer rl.unloadTexture(cloud_texture);
+
+    const cloud2_img = try rl.loadImage("assets/hd_cloud_2.gif");
+    const cloud2_texture = try rl.loadTextureFromImage(cloud2_img);
+    defer rl.unloadImage(cloud2_img);
+    defer rl.unloadTexture(cloud2_texture);
+
+    const cloud3_img = try rl.loadImage("assets/hd_cloud_3.gif");
+    const cloud3_texture = try rl.loadTextureFromImage(cloud3_img);
+    defer rl.unloadImage(cloud3_img);
+    defer rl.unloadTexture(cloud3_texture);
+
+    const cloud4_img = try rl.loadImage("assets/hd_cloud_4.gif");
+    const cloud4_texture = try rl.loadTextureFromImage(cloud4_img);
+    defer rl.unloadImage(cloud4_img);
+    defer rl.unloadTexture(cloud4_texture);
+
+    const palm_img = try rl.loadImage("assets/hd_palm_1.gif");
+    const palm_texture = try rl.loadTextureFromImage(palm_img);
     defer rl.unloadImage(palm_img);
     defer rl.unloadTexture(palm_texture);
 
-    const palm2_img = try rl.loadImageFromMemory(".gif", @embedFile("palm2")); // Loaded in CPU memory (RAM)
-    const palm2_texture = try rl.loadTextureFromImage(palm2_img); // Image converted to texture, GPU memory (VRAM)
+    const palm2_img = try rl.loadImage("assets/hd_tree_1.gif");
+    const palm2_texture = try rl.loadTextureFromImage(palm2_img);
     defer rl.unloadImage(palm2_img);
     defer rl.unloadTexture(palm2_texture);
 
-    const bush_img = try rl.loadImageFromMemory(".gif", @embedFile("bush")); // Loaded in CPU memory (RAM)
-    const bush_texture = try rl.loadTextureFromImage(bush_img); // Image converted to texture, GPU memory (VRAM)
+    const bush_img = try rl.loadImage("assets/hd_bush_1.gif");
+    const bush_texture = try rl.loadTextureFromImage(bush_img);
     defer rl.unloadImage(bush_img);
     defer rl.unloadTexture(bush_texture);
 
-    const bush2_img = try rl.loadImageFromMemory(".gif", @embedFile("bush2")); // Loaded in CPU memory (RAM)
-    const bush2_texture = try rl.loadTextureFromImage(bush2_img); // Image converted to texture, GPU memory (VRAM)
+    const bush2_img = try rl.loadImage("assets/hd_bush_2.gif");
+    const bush2_texture = try rl.loadTextureFromImage(bush2_img);
     defer rl.unloadImage(bush2_img);
     defer rl.unloadTexture(bush2_texture);
 
-    const plant_defs = [_]PlantDef{
-        .{ .texture = palm_texture },
-        .{ .texture = palm2_texture },
+    const trees_defs = [_]rl.Texture{
+        palm_texture,
+        palm2_texture,
     };
 
-    const plant_defs2 = [_]PlantDef{
-        .{ .texture = bush_texture },
-        .{ .texture = bush2_texture },
+    const plants_defs = [_]rl.Texture{
+        bush_texture,
+        bush2_texture,
     };
-    const fly_img = try rl.loadImageFromMemory(".gif", @embedFile("fly")); // Loaded in CPU memory (RAM)
-    const fly_texture = try rl.loadTextureFromImage(fly_img); // Image converted to texture, GPU memory (VRAM)
+
+    const sky_hi_defs = [_]rl.Texture{
+        cloud_texture,
+        cloud2_texture,
+    };
+
+    const sky_low_defs = [_]rl.Texture{
+        cloud3_texture,
+        cloud4_texture,
+    };
+
+    const fly_img = try rl.loadImage("assets/fly.gif");
+    const fly_texture = try rl.loadTextureFromImage(fly_img);
     defer rl.unloadImage(fly_img);
     defer rl.unloadTexture(fly_texture);
 
-    const fly2_img = try rl.loadImageFromMemory(".gif", @embedFile("fly2")); // Loaded in CPU memory (RAM)
-    const fly2_texture = try rl.loadTextureFromImage(fly2_img); // Image converted to texture, GPU memory (VRAM)
+    const fly2_img = try rl.loadImage("assets/fly2.gif");
+    const fly2_texture = try rl.loadTextureFromImage(fly2_img);
     defer rl.unloadImage(fly2_img);
     defer rl.unloadTexture(fly2_texture);
 
-    const apple_img = try rl.loadImageFromMemory(".gif", @embedFile("apple")); // Loaded in CPU memory (RAM)
-    const apple_texture = try rl.loadTextureFromImage(apple_img); // Image converted to texture, GPU memory (VRAM)
+    const apple_img = try rl.loadImage("assets/apple.gif");
+    const apple_texture = try rl.loadTextureFromImage(apple_img);
     defer rl.unloadImage(apple_img);
     defer rl.unloadTexture(apple_texture);
 
-    // var terrain = Terrain.init();
-    var player = Entity.init(Block.init(100, 100, 32, 32, 200.0, fly_texture, fly2_texture, true), EntityType.Player, 100);
-    var enemy = Entity.init(Block.init(200, 200, 32, 32, 50.0, apple_texture, apple_texture, false), EntityType.Enemy, 10);
-    var enemy2 = Entity.init(Block.init(300, 300, 32, 32, 50.0, apple_texture, apple_texture, false), EntityType.Enemy, 10);
+    const sfx_music = try rl.loadMusicStream("assets/music_1.ogg");
+    defer rl.unloadMusicStream(sfx_music);
+    rl.setMusicVolume(sfx_music, MUSIC_VOLUME);
+    rl.playMusicStream(sfx_music);
+
+    const sfx_intro = try rl.loadSound("assets/intro.ogg");
+    defer rl.unloadSound(sfx_intro);
+    rl.playSound(sfx_intro);
+
+    const sfx_bounce = try rl.loadSound("assets/bounce.ogg");
+    defer rl.unloadSound(sfx_bounce);
+
+    var player = Entity.init(Block.init(100, 100, 32, 32, 200.0, fly_texture, fly2_texture, sfx_bounce, true), EntityType.Player, 100);
+    var enemy = Entity.init(Block.init(200, 200, 32, 32, 50.0, apple_texture, apple_texture, sfx_bounce, false), EntityType.Enemy, 10);
+    var enemy2 = Entity.init(Block.init(300, 300, 32, 32, 50.0, apple_texture, apple_texture, sfx_bounce, false), EntityType.Enemy, 10);
 
     enemy.block.setVelocity(-40.0, -80.0);
     enemy2.block.setVelocity(60.0, -40.0);
 
     while (rl.windowShouldClose() == false) {
         const dt: f32 = rl.getFrameTime();
+        rl.updateMusicStream(sfx_music);
 
         if (rl.isKeyDown(rl.KeyboardKey.right)) player.block.addVel(Vec2.init(dt, 0.0));
         if (rl.isKeyDown(rl.KeyboardKey.left)) player.block.addVel(Vec2.init(-dt, 0.0));
@@ -278,6 +322,18 @@ pub fn main() !void {
 
         rl.drawTexture(bg_texture, 0, 0, rl.Color.white);
 
+        drawProceduralSprites(player.block.pos.x * 0.02, 128.0, &sky_hi_defs, rl.Color.white, 128, SEED + 111);
+        drawProceduralSprites(0, 256.0, &sky_low_defs, rl.Color.white, 64, SEED + 321);
+        drawProceduralSprites(player.block.pos.x * 0.02, WINDOW_HEIGHT, &trees_defs, rl.Color.init(192, 192, 192, 255), 50, SEED + 1444);
+        drawProceduralSprites(player.block.pos.x * 0.04, WINDOW_HEIGHT, &plants_defs, rl.Color.init(192, 192, 192, 255), 32, SEED + 123);
+        player.block.draw();
+        enemy.block.draw();
+        enemy2.block.draw();
+        drawProceduralSprites(player.block.pos.x * 0.05, WINDOW_HEIGHT, &trees_defs, rl.Color.white, 96, SEED + 3232);
+        drawProceduralSprites(player.block.pos.x * 0.1, WINDOW_HEIGHT, &plants_defs, rl.Color.init(192, 192, 192, 255), 64, SEED + 123);
+        drawProceduralSprites(player.block.pos.x * 0.15, WINDOW_HEIGHT, &plants_defs, rl.Color.white, 64, SEED + 4323);
+        drawProceduralSprites(player.block.pos.x * 0.1, 64.0, &sky_hi_defs, rl.Color.white, 96, SEED + 123);
+
         rl.drawRectangle(2, 2, 38, 32, DB16.YELLOW);
         var fps_buffer: [32]u8 = undefined;
         const fps_text = std.fmt.bufPrintZ(&fps_buffer, "{d}", .{rl.getFPS()}) catch "0";
@@ -288,17 +344,7 @@ pub fn main() !void {
         const health_text = std.fmt.bufPrintZ(&health_buffer, "{d}", .{player.health}) catch "0";
         rl.drawText(health_text, 54, 8, 20, DB16.BLACK);
 
-        drawProceduralForest(player.block.pos.x * 0.01, &plant_defs, rl.Color.init(192, 192, 192, 255), 50, 1444);
-        drawProceduralForest(player.block.pos.x * 0.02, &plant_defs2, rl.Color.init(192, 192, 192, 255), 32, 123);
-        player.block.draw();
-        enemy.block.draw();
-        enemy2.block.draw();
-        drawProceduralForest(player.block.pos.x * 0.05, &plant_defs, rl.Color.white, 96, 3232);
-        drawProceduralForest(player.block.pos.x * 0.1, &plant_defs2, rl.Color.init(192, 192, 192, 255), 64, 123);
-        drawProceduralForest(player.block.pos.x * 0.15, &plant_defs2, rl.Color.white, 64, 432);
-
         if (colliding) {
-            // player.block.bounceOff();
             player.health -= 1;
             if (player.health <= 0) {
                 player.block.pos = Vec2.init(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
