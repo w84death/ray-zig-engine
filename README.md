@@ -10,6 +10,7 @@ By Krzysztof Krystian Jankowski
 zig build run
 zig build -Doptimize=ReleaseSmall upx
 zig build -Dtarget=x86_64-windows -Doptimize=ReleaseSmall
+zig build -Dtarget=i386-windows -Doptimize=ReleaseSmall
 
 ## Images Sources
 Tenkei Koubou - Trees Textures 1

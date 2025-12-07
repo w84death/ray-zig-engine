@@ -22,51 +22,6 @@ pub fn build(b: *std.Build) void {
     });
 
     exe.linkLibrary(raylib_artifact);
-    exe.root_module.addAnonymousImport("bg_1", .{
-        .root_source_file = b.path("assets/hd_bg_1.gif"),
-    });
-    exe.root_module.addAnonymousImport("cloud", .{
-        .root_source_file = b.path("assets/hd_cloud_1.gif"),
-    });
-    exe.root_module.addAnonymousImport("cloud2", .{
-        .root_source_file = b.path("assets/hd_cloud_2.gif"),
-    });
-    exe.root_module.addAnonymousImport("cloud3", .{
-        .root_source_file = b.path("assets/hd_cloud_3.gif"),
-    });
-    exe.root_module.addAnonymousImport("cloud4", .{
-        .root_source_file = b.path("assets/hd_cloud_4.gif"),
-    });
-    exe.root_module.addAnonymousImport("palm", .{
-        .root_source_file = b.path("assets/hd_palm_1.gif"),
-    });
-    exe.root_module.addAnonymousImport("palm2", .{
-        .root_source_file = b.path("assets/hd_tree_1.gif"),
-    });
-    exe.root_module.addAnonymousImport("bush", .{
-        .root_source_file = b.path("assets/hd_bush_1.gif"),
-    });
-    exe.root_module.addAnonymousImport("bush2", .{
-        .root_source_file = b.path("assets/hd_bush_2.gif"),
-    });
-    exe.root_module.addAnonymousImport("fly", .{
-        .root_source_file = b.path("assets/fly.gif"),
-    });
-    exe.root_module.addAnonymousImport("fly2", .{
-        .root_source_file = b.path("assets/fly2.gif"),
-    });
-    exe.root_module.addAnonymousImport("apple", .{
-        .root_source_file = b.path("assets/apple.gif"),
-    });
-    exe.root_module.addAnonymousImport("sfx_music", .{
-        .root_source_file = b.path("assets/music_1.ogg"),
-    });
-    exe.root_module.addAnonymousImport("sfx_bounce", .{
-        .root_source_file = b.path("assets/bounce.ogg"),
-    });
-    exe.root_module.addAnonymousImport("sfx_intro", .{
-        .root_source_file = b.path("assets/intro.ogg"),
-    });
     exe.root_module.addImport("raylib", raylib);
     exe.root_module.addImport("raygui", raygui);
 
