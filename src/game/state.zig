@@ -44,6 +44,7 @@ pub const GameState = struct {
     layer_trees_near: Parallax.ParallaxLayer,
     layer_bushes: Parallax.ParallaxLayer,
     layer_bushes_near: Parallax.ParallaxLayer,
+    layer_bushes_near2: Parallax.ParallaxLayer,
     layer_flowers: Parallax.ParallaxLayer,
     layer_flowers_mid: Parallax.ParallaxLayer,
     layer_flowers_near: Parallax.ParallaxLayer,
@@ -109,7 +110,8 @@ pub const GameState = struct {
         self.layer_trees = Parallax.make(&self.trees_tex, 0.05, WINDOW_HEIGHT - 64, 128, rl.Color.init(192, 192, 210, 255), 5);
         self.layer_trees_near = Parallax.make(&self.trees_tex, 0.20, WINDOW_HEIGHT - 32, 200, rl.Color.white, 6);
         self.layer_bushes = Parallax.make(&self.bushes_tex, 0.10, WINDOW_HEIGHT - 32, 80, rl.Color.init(180, 180, 200, 255), 7);
-        self.layer_bushes_near = Parallax.make(&self.bushes_tex, 0.30, WINDOW_HEIGHT, 64, rl.Color.white, 8);
+        self.layer_bushes_near = Parallax.make(&self.bushes_tex, 0.30, WINDOW_HEIGHT, 96, rl.Color.white, 8);
+        self.layer_bushes_near2 = Parallax.make(&self.bushes_tex, 0.35, WINDOW_HEIGHT, 96, rl.Color.white, 9);
         self.layer_flowers = Parallax.make(&self.flowers_tex, 0.15, WINDOW_HEIGHT - 48, 128, rl.Color.init(200, 220, 200, 255), 9);
         self.layer_flowers_mid = Parallax.make(&self.flowers_tex, 0.25, WINDOW_HEIGHT - 32, 96, rl.Color.white, 10);
         self.layer_flowers_near = Parallax.make(&self.flowers_tex, 0.40, WINDOW_HEIGHT, 200, rl.Color.white, 11);
@@ -168,6 +170,7 @@ pub const GameState = struct {
         // --- Foreground parallax ---
         self.layer_flowers_mid.draw(camera_x);
         self.layer_bushes_near.draw(camera_x);
+        self.layer_bushes_near2.draw(camera_x);
         self.layer_flowers_near.draw(camera_x);
         self.layer_clouds_high.draw(camera_x);
         self.layer_clouds_high2.draw(camera_x);
