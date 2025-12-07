@@ -82,10 +82,10 @@ pub const Block = struct {
     frame: i8 = 0,
     sfx: rl.Sound,
 
-    pub fn init(x: f32, y: f32, w: i32, h: i32, speed: f32, tex: rl.Texture, tex2: rl.Texture, sfx: rl.Sound, flying: bool) Block {
+    pub fn init(x: f32, y: f32, speed: f32, tex: rl.Texture, tex2: rl.Texture, sfx: rl.Sound, flying: bool) Block {
         return .{
             .pos = Vec2.init(x, y),
-            .size = IVec2.init(w, h),
+            .size = IVec2.init(tex.width, tex.height),
             .speed = speed,
             .tex = tex,
             .tex2 = tex2,
@@ -162,7 +162,7 @@ pub const Block = struct {
     }
 };
 
-pub const EntityType = enum { Player, Enemy, Bullet, Obstacle };
+pub const EntityType = enum { Player, Enemy, Pickup, Powerup };
 pub const Entity = struct {
     block: Block,
     kind: EntityType,
@@ -188,7 +188,7 @@ fn drawProceduralSprites(camera_x: f32, ground_y: f32, defs: []const rl.Texture,
         const def = defs[@intFromFloat(kind_roll * l)];
         const sprite_h: f32 = @floatFromInt(def.height);
         const h: f32 = kind_roll * sprite_h * 0.75;
-        const y: i32 = @intFromFloat(ground_y - sprite_h + h);
+        const y: i32 = @intFromFloat(ground_y - sprite_h + h + 12.0);
         const screen_x: i32 = @intFromFloat(x - camera_x);
         rl.drawTexture(def, screen_x, y, tint);
     }
@@ -248,6 +248,31 @@ pub fn main() !void {
     defer rl.unloadImage(bush2_img);
     defer rl.unloadTexture(bush2_texture);
 
+    const flower_img = try rl.loadImage("assets/hd_flower_1.gif");
+    const flower_texture = try rl.loadTextureFromImage(flower_img);
+    defer rl.unloadImage(flower_img);
+    defer rl.unloadTexture(flower_texture);
+
+    const flower2_img = try rl.loadImage("assets/hd_flower_2.gif");
+    const flower2_texture = try rl.loadTextureFromImage(flower2_img);
+    defer rl.unloadImage(flower2_img);
+    defer rl.unloadTexture(flower2_texture);
+
+    const flower3_img = try rl.loadImage("assets/hd_flower_3.gif");
+    const flower3_texture = try rl.loadTextureFromImage(flower3_img);
+    defer rl.unloadImage(flower3_img);
+    defer rl.unloadTexture(flower3_texture);
+
+    const flower4_img = try rl.loadImage("assets/hd_flower_4.gif");
+    const flower4_texture = try rl.loadTextureFromImage(flower4_img);
+    defer rl.unloadImage(flower4_img);
+    defer rl.unloadTexture(flower4_texture);
+
+    const flower5_img = try rl.loadImage("assets/hd_flower_5.gif");
+    const flower5_texture = try rl.loadTextureFromImage(flower5_img);
+    defer rl.unloadImage(flower5_img);
+    defer rl.unloadTexture(flower5_texture);
+
     const trees_defs = [_]rl.Texture{
         palm_texture,
         palm2_texture,
@@ -256,6 +281,14 @@ pub fn main() !void {
     const plants_defs = [_]rl.Texture{
         bush_texture,
         bush2_texture,
+    };
+
+    const flowers_defs = [_]rl.Texture{
+        flower_texture,
+        flower2_texture,
+        flower3_texture,
+        flower4_texture,
+        flower5_texture,
     };
 
     const sky_hi_defs = [_]rl.Texture{
@@ -278,10 +311,20 @@ pub fn main() !void {
     defer rl.unloadImage(fly2_img);
     defer rl.unloadTexture(fly2_texture);
 
-    const apple_img = try rl.loadImage("assets/apple.gif");
-    const apple_texture = try rl.loadTextureFromImage(apple_img);
-    defer rl.unloadImage(apple_img);
-    defer rl.unloadTexture(apple_texture);
+    const fruit1_img = try rl.loadImage("assets/hd_fruit_1.gif");
+    const fruit1_texture = try rl.loadTextureFromImage(fruit1_img);
+    defer rl.unloadImage(fruit1_img);
+    defer rl.unloadTexture(fruit1_texture);
+
+    const fruit2_img = try rl.loadImage("assets/hd_fruit_2.gif");
+    const fruit2_texture = try rl.loadTextureFromImage(fruit2_img);
+    defer rl.unloadImage(fruit2_img);
+    defer rl.unloadTexture(fruit2_texture);
+
+    const fruit3_img = try rl.loadImage("assets/hd_fruit_3.gif");
+    const fruit3_texture = try rl.loadTextureFromImage(fruit3_img);
+    defer rl.unloadImage(fruit3_img);
+    defer rl.unloadTexture(fruit3_texture);
 
     const sfx_music = try rl.loadMusicStream("assets/music_1.ogg");
     defer rl.unloadMusicStream(sfx_music);
@@ -295,12 +338,14 @@ pub fn main() !void {
     const sfx_bounce = try rl.loadSound("assets/bounce.ogg");
     defer rl.unloadSound(sfx_bounce);
 
-    var player = Entity.init(Block.init(100, 100, 32, 32, 200.0, fly_texture, fly2_texture, sfx_bounce, true), EntityType.Player, 100);
-    var enemy = Entity.init(Block.init(200, 200, 32, 32, 50.0, apple_texture, apple_texture, sfx_bounce, false), EntityType.Enemy, 10);
-    var enemy2 = Entity.init(Block.init(300, 300, 32, 32, 50.0, apple_texture, apple_texture, sfx_bounce, false), EntityType.Enemy, 10);
+    var player = Entity.init(Block.init(100, 100, 200.0, fly_texture, fly2_texture, sfx_bounce, true), EntityType.Player, 100);
+    var enemy = Entity.init(Block.init(200, 200, 50.0, fruit1_texture, fruit1_texture, sfx_bounce, false), EntityType.Enemy, 10);
+    var enemy2 = Entity.init(Block.init(300, 300, 50.0, fruit2_texture, fruit2_texture, sfx_bounce, false), EntityType.Enemy, 10);
+    var enemy3 = Entity.init(Block.init(400, 200, 50.0, fruit3_texture, fruit3_texture, sfx_bounce, false), EntityType.Enemy, 10);
 
     enemy.block.setVelocity(-40.0, -80.0);
     enemy2.block.setVelocity(60.0, -40.0);
+    enemy3.block.setVelocity(60.0, 40.0);
 
     while (rl.windowShouldClose() == false) {
         const dt: f32 = rl.getFrameTime();
@@ -314,8 +359,9 @@ pub fn main() !void {
         player.block.update(dt);
         enemy.block.update(dt);
         enemy2.block.update(dt);
+        enemy3.block.update(dt);
 
-        const colliding = player.block.collidesWidth(enemy.block) or player.block.collidesWidth(enemy2.block);
+        const colliding = player.block.collidesWidth(enemy.block) or player.block.collidesWidth(enemy2.block) or player.block.collidesWidth(enemy3.block);
 
         rl.beginDrawing();
         defer rl.endDrawing();
@@ -325,12 +371,15 @@ pub fn main() !void {
         drawProceduralSprites(player.block.pos.x * 0.02, 128.0, &sky_hi_defs, rl.Color.white, 128, SEED + 111);
         drawProceduralSprites(0, 256.0, &sky_low_defs, rl.Color.white, 64, SEED + 321);
         drawProceduralSprites(player.block.pos.x * 0.02, WINDOW_HEIGHT, &trees_defs, rl.Color.init(192, 192, 192, 255), 50, SEED + 1444);
-        drawProceduralSprites(player.block.pos.x * 0.04, WINDOW_HEIGHT, &plants_defs, rl.Color.init(192, 192, 192, 255), 32, SEED + 123);
+        drawProceduralSprites(player.block.pos.x * 0.04, WINDOW_HEIGHT, &plants_defs, rl.Color.init(192, 192, 192, 255), 64, SEED + 333);
+        drawProceduralSprites(player.block.pos.x * 0.04, WINDOW_HEIGHT, &flowers_defs, rl.Color.init(192, 192, 192, 255), 48, SEED + 988);
         player.block.draw();
         enemy.block.draw();
         enemy2.block.draw();
+        enemy3.block.draw();
         drawProceduralSprites(player.block.pos.x * 0.05, WINDOW_HEIGHT, &trees_defs, rl.Color.white, 96, SEED + 3232);
         drawProceduralSprites(player.block.pos.x * 0.1, WINDOW_HEIGHT, &plants_defs, rl.Color.init(192, 192, 192, 255), 64, SEED + 123);
+        drawProceduralSprites(player.block.pos.x * 0.125, WINDOW_HEIGHT, &flowers_defs, rl.Color.init(192, 192, 192, 255), 32, SEED + 1523);
         drawProceduralSprites(player.block.pos.x * 0.15, WINDOW_HEIGHT, &plants_defs, rl.Color.white, 64, SEED + 4323);
         drawProceduralSprites(player.block.pos.x * 0.1, 64.0, &sky_hi_defs, rl.Color.white, 96, SEED + 123);
 
