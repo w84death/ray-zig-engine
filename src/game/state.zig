@@ -105,12 +105,13 @@ pub const GameState = struct {
         self.layer_clouds_low2 = Parallax.make(&self.clouds_low_tex, 0.05, 240, 220, rl.Color.white, 2);
         self.layer_clouds_high = Parallax.make(&self.clouds_high_tex, 0.10, 100, 300, rl.Color.white, 3);
         self.layer_clouds_high2 = Parallax.make(&self.clouds_high_tex, 0.12, 120, 340, rl.Color.white, 4);
-        self.layer_trees = Parallax.make(&self.trees_tex, 0.05, WINDOW_HEIGHT - 32, 128, rl.Color.init(192, 192, 210, 255), 5);
-        self.layer_trees_near = Parallax.make(&self.trees_tex, 0.20, WINDOW_HEIGHT, 200, rl.Color.white, 6);
-        self.layer_bushes = Parallax.make(&self.bushes_tex, 0.10, WINDOW_HEIGHT - 24, 80, rl.Color.init(180, 180, 200, 255), 7);
+
+        self.layer_trees = Parallax.make(&self.trees_tex, 0.05, WINDOW_HEIGHT - 64, 128, rl.Color.init(192, 192, 210, 255), 5);
+        self.layer_trees_near = Parallax.make(&self.trees_tex, 0.20, WINDOW_HEIGHT - 32, 200, rl.Color.white, 6);
+        self.layer_bushes = Parallax.make(&self.bushes_tex, 0.10, WINDOW_HEIGHT - 32, 80, rl.Color.init(180, 180, 200, 255), 7);
         self.layer_bushes_near = Parallax.make(&self.bushes_tex, 0.30, WINDOW_HEIGHT, 64, rl.Color.white, 8);
-        self.layer_flowers = Parallax.make(&self.flowers_tex, 0.15, WINDOW_HEIGHT - 32, 128, rl.Color.init(200, 220, 200, 255), 9);
-        self.layer_flowers_mid = Parallax.make(&self.flowers_tex, 0.25, WINDOW_HEIGHT - 24, 96, rl.Color.white, 10);
+        self.layer_flowers = Parallax.make(&self.flowers_tex, 0.15, WINDOW_HEIGHT - 48, 128, rl.Color.init(200, 220, 200, 255), 9);
+        self.layer_flowers_mid = Parallax.make(&self.flowers_tex, 0.25, WINDOW_HEIGHT - 32, 96, rl.Color.white, 10);
         self.layer_flowers_near = Parallax.make(&self.flowers_tex, 0.40, WINDOW_HEIGHT, 200, rl.Color.white, 11);
         return self;
     }
