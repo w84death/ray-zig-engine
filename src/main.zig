@@ -1,6 +1,5 @@
 const std = @import("std");
 const rl = @import("raylib");
-const ArrayList = std.ArrayList;
 
 const WINDOW_WIDTH = 800;
 const WINDOW_HEIGHT = 600;
@@ -334,18 +333,53 @@ pub const Sprites = struct {
     }
 };
 
+pub fn makeParallaxLayer(
+    textures: []const rl.Texture,
+    parallax: f32,
+    ground_y: f32,
+    density: f32,
+    tint: rl.Color,
+    seed_offset: u64,
+) ParallaxLayer {
+    var layer = ParallaxLayer{
+        .sprites = undefined,
+        .count = 0,
+        .parallax = parallax,
+        .textures = textures,
+    };
+    fillLayer(&layer, ground_y, density, tint, seed_offset, WORLD_WIDTH);
+    return layer;
+}
+
 pub fn main() !void {
+    // ── Init Window ──────────────────
     rl.initWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Zig/Raylib Engine");
     defer rl.closeWindow();
-    rl.initAudioDevice();
-    defer rl.closeAudioDevice();
     rl.setTargetFPS(60);
 
+    // ── Init Audio ───────────────────
+    rl.initAudioDevice();
+    defer rl.closeAudioDevice();
+
+    // ── Load Sprites ─────────────────
     var spr = try Sprites.load();
     defer spr.deinit();
 
-    const fly_textures = [_]rl.Texture{ spr.get(.fly1), spr.get(.fly2) };
-    const fruit_textures = [_]rl.Texture{ spr.get(.fruit1), spr.get(.fruit2), spr.get(.fruit3) };
+    // ── Clouds ─────────────────────────────────────
+    const sky_hi_defs = [_]rl.Texture{
+        spr.get(.cloud1),
+        spr.get(.cloud2),
+    };
+    const sky_low_defs = [_]rl.Texture{
+        spr.get(.cloud3),
+        spr.get(.cloud4),
+    };
+    var layer_clouds_low = makeParallaxLayer(&sky_low_defs, 0.02, 200, 180, rl.Color.white, 111);
+    var layer_clouds_low2 = makeParallaxLayer(&sky_low_defs, 0.05, 240, 220, rl.Color.white, 112);
+    var layer_clouds_high = makeParallaxLayer(&sky_hi_defs, 0.10, 100, 300, rl.Color.white, 321);
+    var layer_clouds_high2 = makeParallaxLayer(&sky_hi_defs, 0.12, 120, 340, rl.Color.white, 322);
+
+    // ── Trees ──────────────────────────────────────
     const trees_defs = [_]rl.Texture{
         spr.get(.tree1),
         spr.get(.tree2),
@@ -355,14 +389,20 @@ pub fn main() !void {
         spr.get(.bush5),
         spr.get(.bush6),
     };
+    var layer_tree = makeParallaxLayer(&trees_defs, 0.05, WINDOW_HEIGHT - 32, 128, rl.Color.init(192, 192, 210, 255), 1414);
+    var layer_tree2 = makeParallaxLayer(&trees_defs, 0.20, WINDOW_HEIGHT, 200, rl.Color.white, 148);
 
+    // ── Bushes ─────────────────────────────────────
     const bushes_defs = [_]rl.Texture{
         spr.get(.bush1),
         spr.get(.bush2),
         spr.get(.bush3),
         spr.get(.bush4),
     };
+    var layer_bush = makeParallaxLayer(&bushes_defs, 0.10, WINDOW_HEIGHT - 24, 80, rl.Color.init(180, 180, 200, 255), 1314);
+    var layer_bush2 = makeParallaxLayer(&bushes_defs, 0.30, WINDOW_HEIGHT, 64, rl.Color.white, 984);
 
+    // ── Flowers ──────────────────────
     const flowers_defs = [_]rl.Texture{
         spr.get(.flower1),
         spr.get(.flower2),
@@ -370,64 +410,39 @@ pub fn main() !void {
         spr.get(.flower4),
         spr.get(.flower5),
     };
+    var layer_flower = makeParallaxLayer(&flowers_defs, 0.15, WINDOW_HEIGHT - 32, 128, rl.Color.init(200, 220, 200, 255), 988);
+    var layer_flower2 = makeParallaxLayer(&flowers_defs, 0.25, WINDOW_HEIGHT - 32, 96, rl.Color.white, 153);
+    var layer_flower3 = makeParallaxLayer(&flowers_defs, 0.40, WINDOW_HEIGHT, 200, rl.Color.white, 999);
 
-    const sky_hi_defs = [_]rl.Texture{
-        spr.get(.cloud1),
-        spr.get(.cloud2),
-    };
-
-    const sky_low_defs = [_]rl.Texture{
-        spr.get(.cloud3),
-        spr.get(.cloud4),
-    };
-
-    var layer_clouds_low = ParallaxLayer{ .sprites = undefined, .count = 0, .parallax = 0.02, .textures = &sky_low_defs };
-    var layer_clouds_low2 = ParallaxLayer{ .sprites = undefined, .count = 0, .parallax = 0.05, .textures = &sky_low_defs };
-    var layer_clouds_high = ParallaxLayer{ .sprites = undefined, .count = 0, .parallax = 0.10, .textures = &sky_hi_defs };
-    var layer_clouds_high2 = ParallaxLayer{ .sprites = undefined, .count = 0, .parallax = 0.12, .textures = &sky_hi_defs };
-    fillLayer(&layer_clouds_low, 200, 180, rl.Color.white, 111, WORLD_WIDTH);
-    fillLayer(&layer_clouds_low2, 240, 220, rl.Color.white, 112, WORLD_WIDTH);
-    fillLayer(&layer_clouds_high, 100, 300, rl.Color.white, 321, WORLD_WIDTH);
-    fillLayer(&layer_clouds_high2, 120, 340, rl.Color.white, 322, WORLD_WIDTH);
-
-    var layer_tree = ParallaxLayer{ .sprites = undefined, .count = 0, .parallax = 0.05, .textures = &trees_defs };
-    var layer_tree2 = ParallaxLayer{ .sprites = undefined, .count = 0, .parallax = 0.2, .textures = &trees_defs };
-    fillLayer(&layer_tree, WINDOW_HEIGHT - 32, 128, rl.Color.init(192, 192, 210, 255), 1414, WORLD_WIDTH);
-    fillLayer(&layer_tree2, WINDOW_HEIGHT, 200, rl.Color.white, 148, WORLD_WIDTH);
-
-    var layer_bush = ParallaxLayer{ .sprites = undefined, .count = 0, .parallax = 0.1, .textures = &bushes_defs };
-    var layer_bush2 = ParallaxLayer{ .sprites = undefined, .count = 0, .parallax = 0.3, .textures = &bushes_defs };
-    fillLayer(&layer_bush, WINDOW_HEIGHT - 24, 80, rl.Color.init(180, 180, 200, 255), 1314, WORLD_WIDTH);
-    fillLayer(&layer_bush2, WINDOW_HEIGHT, 64, rl.Color.white, 984, WORLD_WIDTH);
-
-    var layer_flower = ParallaxLayer{ .sprites = undefined, .count = 0, .parallax = 0.15, .textures = &flowers_defs };
-    var layer_flower2 = ParallaxLayer{ .sprites = undefined, .count = 0, .parallax = 0.25, .textures = &flowers_defs };
-    var layer_flower3 = ParallaxLayer{ .sprites = undefined, .count = 0, .parallax = 0.4, .textures = &flowers_defs };
-    fillLayer(&layer_flower, WINDOW_HEIGHT - 32, 128, rl.Color.init(200, 220, 200, 255), 988, WORLD_WIDTH);
-    fillLayer(&layer_flower2, WINDOW_HEIGHT - 32, 96, rl.Color.white, 153, WORLD_WIDTH);
-    fillLayer(&layer_flower3, WINDOW_HEIGHT, 200, rl.Color.white, 999, WORLD_WIDTH);
-
+    // ── SFX ----──────────────────────
     const sfx_bounce = try rl.loadSound("assets/bounce.ogg");
     defer rl.unloadSound(sfx_bounce);
 
-    var player = Entity.init(EntityType.Player, 100, 100, 200.0, &fly_textures, 0.08, sfx_bounce, true);
-    var enemy = Entity.init(EntityType.Enemy, 200, 200, 50.0, &fruit_textures, 0.2, sfx_bounce, false);
-    var enemy2 = Entity.init(EntityType.Enemy, 300, 300, 50.0, &fruit_textures, 0.2, sfx_bounce, false);
-    var enemy3 = Entity.init(EntityType.Enemy, 400, 200, 50.0, &fruit_textures, 0.2, sfx_bounce, false);
+    // ── Player -──────────────────────
+    const fly_anim = [_]rl.Texture{ spr.get(.fly1), spr.get(.fly2) };
+    var player = Entity.init(EntityType.Player, 100, 100, 200.0, &fly_anim, 0.08, sfx_bounce, true);
 
+    // --- Fruits ----------------------
+    const fruit_anim = [_]rl.Texture{ spr.get(.fruit1), spr.get(.fruit2), spr.get(.fruit3) };
+    var enemy = Entity.init(EntityType.Enemy, 200, 200, 50.0, &fruit_anim, 0.2, sfx_bounce, false);
+    var enemy2 = Entity.init(EntityType.Enemy, 300, 300, 50.0, &fruit_anim, 0.2, sfx_bounce, false);
+    var enemy3 = Entity.init(EntityType.Enemy, 400, 200, 50.0, &fruit_anim, 0.2, sfx_bounce, false);
     enemy.setVelocity(-40.0, -80.0);
     enemy2.setVelocity(60.0, -40.0);
     enemy3.setVelocity(60.0, 40.0);
 
+    // ── Music ─────────────────────---
     const sfx_music = try rl.loadMusicStream("assets/music_1.ogg");
     defer rl.unloadMusicStream(sfx_music);
     rl.setMusicVolume(sfx_music, MUSIC_VOLUME);
     rl.playMusicStream(sfx_music);
 
+    // ── Jingle -──────────────────────
     const sfx_intro = try rl.loadSound("assets/intro.ogg");
     defer rl.unloadSound(sfx_intro);
     rl.playSound(sfx_intro);
 
+    // ── Render & Logic Loop -─────────
     while (rl.windowShouldClose() == false) {
         const dt: f32 = rl.getFrameTime();
         rl.updateMusicStream(sfx_music);
@@ -438,13 +453,13 @@ pub fn main() !void {
         if (rl.isKeyDown(rl.KeyboardKey.down)) player.addVel(Vec2.init(0.0, dt));
 
         player.update(dt);
+        const camera_x = player.pos.x - WINDOW_WIDTH / 2.0;
+
         enemy.update(dt);
         enemy2.update(dt);
         enemy3.update(dt);
 
         const colliding = player.collidesWidth(enemy) or player.collidesWidth(enemy2) or player.collidesWidth(enemy3);
-        const camera_x = player.pos.x - WINDOW_WIDTH / 2.0;
-
         if (colliding) {
             player.health -= 1;
             if (player.health <= 0) {
@@ -453,11 +468,12 @@ pub fn main() !void {
             }
         }
 
+        // --- Rendering ---------------
         rl.beginDrawing();
         defer rl.endDrawing();
 
+        // --- Game Assets -------------
         rl.drawTexture(spr.get(.bg2), 0, 0, rl.Color.white);
-
         layer_clouds_low.draw(camera_x);
         layer_clouds_low2.draw(camera_x);
         layer_tree.draw(camera_x);
@@ -474,6 +490,7 @@ pub fn main() !void {
         layer_clouds_high.draw(camera_x);
         layer_clouds_high2.draw(camera_x);
 
+        // --- UI ----------------------
         rl.drawRectangle(2, 2, 38, 32, DB16.YELLOW);
         var fps_buffer: [32]u8 = undefined;
         const fps_text = std.fmt.bufPrintZ(&fps_buffer, "{d}", .{rl.getFPS()}) catch "0";
