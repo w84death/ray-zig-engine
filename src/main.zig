@@ -2,12 +2,13 @@ const std = @import("std");
 const rl = @import("raylib");
 const ArrayList = std.ArrayList;
 
-const WINDOW_WIDTH = 640;
-const WINDOW_HEIGHT = 480;
+const WINDOW_WIDTH = 800;
+const WINDOW_HEIGHT = 600;
 const GRAVITY = 98.1;
 const SEED = 87654;
 const MUSIC_VOLUME = 0.4;
 const MAX_SPRITES_PER_LAYER = 256;
+const WORLD_WIDTH = 1200.0;
 
 pub const DB16 = struct {
     pub const BLACK = rl.Color{ .r = 20, .g = 12, .b = 28, .a = 255 };
@@ -252,6 +253,11 @@ pub fn main() !void {
     defer rl.unloadImage(bg_img);
     defer rl.unloadTexture(bg_texture);
 
+    const bg2_img = try rl.loadImage("assets/hd_bg_2.gif");
+    const bg2_texture = try rl.loadTextureFromImage(bg2_img);
+    defer rl.unloadImage(bg2_img);
+    defer rl.unloadTexture(bg2_texture);
+
     const cloud_img = try rl.loadImage("assets/hd_cloud_1.gif");
     const cloud_texture = try rl.loadTextureFromImage(cloud_img);
     defer rl.unloadImage(cloud_img);
@@ -399,7 +405,7 @@ pub fn main() !void {
         bush6_texture,
     };
 
-    const plants_defs = [_]rl.Texture{
+    const bushes_defs = [_]rl.Texture{
         bush_texture,
         bush2_texture,
         bush3_texture,
@@ -424,29 +430,31 @@ pub fn main() !void {
         cloud4_texture,
     };
 
-    var layer1 = ParallaxLayer{ .sprites = undefined, .count = 0, .parallax = 0.02, .textures = &sky_hi_defs };
-    var layer2 = ParallaxLayer{ .sprites = undefined, .count = 0, .parallax = 0.05, .textures = &sky_hi_defs };
-    var layer3 = ParallaxLayer{ .sprites = undefined, .count = 0, .parallax = 0.08, .textures = &sky_low_defs };
-    var layer4 = ParallaxLayer{ .sprites = undefined, .count = 0, .parallax = 0.10, .textures = &sky_low_defs };
-    var layer5 = ParallaxLayer{ .sprites = undefined, .count = 0, .parallax = 0.30, .textures = &trees_defs };
-    var layer6 = ParallaxLayer{ .sprites = undefined, .count = 0, .parallax = 0.50, .textures = &trees_defs };
-    var layer7 = ParallaxLayer{ .sprites = undefined, .count = 0, .parallax = 0.60, .textures = &plants_defs };
-    var layer8 = ParallaxLayer{ .sprites = undefined, .count = 0, .parallax = 0.80, .textures = &plants_defs };
-    var layer9 = ParallaxLayer{ .sprites = undefined, .count = 0, .parallax = 0.90, .textures = &flowers_defs };
-    var layer10 = ParallaxLayer{ .sprites = undefined, .count = 0, .parallax = 1.00, .textures = &flowers_defs };
+    var layer_clouds_low = ParallaxLayer{ .sprites = undefined, .count = 0, .parallax = 0.02, .textures = &sky_low_defs };
+    var layer_clouds_low2 = ParallaxLayer{ .sprites = undefined, .count = 0, .parallax = 0.05, .textures = &sky_low_defs };
+    var layer_clouds_high = ParallaxLayer{ .sprites = undefined, .count = 0, .parallax = 0.10, .textures = &sky_hi_defs };
+    var layer_clouds_high2 = ParallaxLayer{ .sprites = undefined, .count = 0, .parallax = 0.12, .textures = &sky_hi_defs };
+    fillLayer(&layer_clouds_low, 200, 180, rl.Color.white, 111, WORLD_WIDTH);
+    fillLayer(&layer_clouds_low2, 240, 220, rl.Color.white, 112, WORLD_WIDTH);
+    fillLayer(&layer_clouds_high, 100, 300, rl.Color.white, 321, WORLD_WIDTH);
+    fillLayer(&layer_clouds_high2, 120, 340, rl.Color.white, 322, WORLD_WIDTH);
 
-    const WORLD_WIDTH = 12000.0;
+    var layer_tree = ParallaxLayer{ .sprites = undefined, .count = 0, .parallax = 0.05, .textures = &trees_defs };
+    var layer_tree2 = ParallaxLayer{ .sprites = undefined, .count = 0, .parallax = 0.2, .textures = &trees_defs };
+    fillLayer(&layer_tree, WINDOW_HEIGHT - 32, 128, rl.Color.init(192, 192, 210, 255), 1414, WORLD_WIDTH);
+    fillLayer(&layer_tree2, WINDOW_HEIGHT, 200, rl.Color.white, 148, WORLD_WIDTH);
 
-    fillLayer(&layer1, 100, 180, rl.Color.white, 111, WORLD_WIDTH);
-    fillLayer(&layer2, 140, 220, rl.Color.init(255, 255, 255, 180), 112, WORLD_WIDTH);
-    fillLayer(&layer3, 200, 300, rl.Color.white, 321, WORLD_WIDTH);
-    fillLayer(&layer4, 240, 340, rl.Color.init(255, 255, 255, 200), 322, WORLD_WIDTH);
-    fillLayer(&layer5, WINDOW_HEIGHT, 120, rl.Color.init(220, 220, 230, 255), 1444, WORLD_WIDTH);
-    fillLayer(&layer6, WINDOW_HEIGHT, 180, rl.Color.init(180, 180, 200, 255), 3232, WORLD_WIDTH);
-    fillLayer(&layer7, WINDOW_HEIGHT, 80, rl.Color.init(200, 220, 200, 255), 333, WORLD_WIDTH);
-    fillLayer(&layer8, WINDOW_HEIGHT, 100, rl.Color.white, 123, WORLD_WIDTH);
-    fillLayer(&layer9, WINDOW_HEIGHT, 60, rl.Color.init(255, 255, 220, 240), 988, WORLD_WIDTH);
-    fillLayer(&layer10, WINDOW_HEIGHT, 50, rl.Color.init(255, 240, 255, 220), 1523, WORLD_WIDTH);
+    var layer_bush = ParallaxLayer{ .sprites = undefined, .count = 0, .parallax = 0.1, .textures = &bushes_defs };
+    var layer_bush2 = ParallaxLayer{ .sprites = undefined, .count = 0, .parallax = 0.3, .textures = &bushes_defs };
+    fillLayer(&layer_bush, WINDOW_HEIGHT - 24, 80, rl.Color.init(180, 180, 200, 255), 1314, WORLD_WIDTH);
+    fillLayer(&layer_bush2, WINDOW_HEIGHT, 64, rl.Color.white, 984, WORLD_WIDTH);
+
+    var layer_flower = ParallaxLayer{ .sprites = undefined, .count = 0, .parallax = 0.15, .textures = &flowers_defs };
+    var layer_flower2 = ParallaxLayer{ .sprites = undefined, .count = 0, .parallax = 0.25, .textures = &flowers_defs };
+    var layer_flower3 = ParallaxLayer{ .sprites = undefined, .count = 0, .parallax = 0.4, .textures = &flowers_defs };
+    fillLayer(&layer_flower, WINDOW_HEIGHT - 32, 128, rl.Color.init(200, 220, 200, 255), 988, WORLD_WIDTH);
+    fillLayer(&layer_flower2, WINDOW_HEIGHT - 32, 96, rl.Color.white, 153, WORLD_WIDTH);
+    fillLayer(&layer_flower3, WINDOW_HEIGHT, 200, rl.Color.white, 999, WORLD_WIDTH);
 
     var player = Entity.init(Block.init(100, 100, 200.0, fly_texture, fly2_texture, sfx_bounce, true), EntityType.Player, 100);
     var enemy = Entity.init(Block.init(200, 200, 50.0, fruit1_texture, fruit1_texture, sfx_bounce, false), EntityType.Enemy, 10);
@@ -474,25 +482,34 @@ pub fn main() !void {
         const colliding = player.block.collidesWidth(enemy.block) or player.block.collidesWidth(enemy2.block) or player.block.collidesWidth(enemy3.block);
         const camera_x = player.block.pos.x - WINDOW_WIDTH / 2.0;
 
+        if (colliding) {
+            player.health -= 1;
+            if (player.health <= 0) {
+                player.block.pos = Vec2.init(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
+                player.health = 100;
+            }
+        }
+
         rl.beginDrawing();
         defer rl.endDrawing();
 
-        rl.drawTexture(bg_texture, 0, 0, rl.Color.white);
+        rl.drawTexture(bg2_texture, 0, 0, rl.Color.white);
 
-        layer1.draw(camera_x);
-        layer2.draw(camera_x);
-        layer3.draw(camera_x);
-        layer4.draw(camera_x);
-        layer5.draw(camera_x);
+        layer_clouds_low.draw(camera_x);
+        layer_clouds_low2.draw(camera_x);
+        layer_tree.draw(camera_x);
+        layer_bush.draw(camera_x);
+        layer_flower.draw(camera_x);
+        layer_tree2.draw(camera_x);
         player.block.draw();
         enemy.block.draw();
         enemy2.block.draw();
         enemy3.block.draw();
-        layer6.draw(camera_x);
-        layer7.draw(camera_x);
-        layer8.draw(camera_x);
-        layer9.draw(camera_x);
-        layer10.draw(camera_x);
+        layer_flower2.draw(camera_x);
+        layer_bush2.draw(camera_x);
+        layer_flower3.draw(camera_x);
+        layer_clouds_high.draw(camera_x);
+        layer_clouds_high2.draw(camera_x);
 
         rl.drawRectangle(2, 2, 38, 32, DB16.YELLOW);
         var fps_buffer: [32]u8 = undefined;
@@ -503,13 +520,5 @@ pub fn main() !void {
         var health_buffer: [32]u8 = undefined;
         const health_text = std.fmt.bufPrintZ(&health_buffer, "{d}", .{player.health}) catch "0";
         rl.drawText(health_text, 54, 8, 20, DB16.BLACK);
-
-        if (colliding) {
-            player.health -= 1;
-            if (player.health <= 0) {
-                player.block.pos = Vec2.init(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
-                player.health = 100;
-            }
-        }
     }
 }
