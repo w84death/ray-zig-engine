@@ -245,6 +245,95 @@ fn fillLayer(
     layer.count = idx;
 }
 
+pub const TextureList = struct {
+    pub const paths = [_][:0]const u8{
+        "assets/hd_bg_1.gif",
+        "assets/hd_bg_2.gif",
+        "assets/hd_cloud_1.gif",
+        "assets/hd_cloud_2.gif",
+        "assets/hd_cloud_3.gif",
+        "assets/hd_cloud_4.gif",
+        "assets/hd_palm_1.gif",
+        "assets/hd_tree_1.gif",
+        "assets/hd_tree_2.gif",
+        "assets/hd_tree_3.gif",
+        "assets/hd_tree_4.gif",
+        "assets/hd_tree_5.gif",
+        "assets/hd_bush_1.gif",
+        "assets/hd_bush_2.gif",
+        "assets/hd_bush_3.gif",
+        "assets/hd_bush_4.gif",
+        "assets/hd_bush_5.gif",
+        "assets/hd_bush_6.gif",
+        "assets/hd_flower_1.gif",
+        "assets/hd_flower_2.gif",
+        "assets/hd_flower_3.gif",
+        "assets/hd_flower_4.gif",
+        "assets/hd_flower_5.gif",
+        "assets/fly.gif",
+        "assets/fly2.gif",
+        "assets/hd_fruit_1.gif",
+        "assets/hd_fruit_2.gif",
+        "assets/hd_fruit_3.gif",
+    };
+
+    pub const count = paths.len;
+    pub const Id = enum {
+        bg1,
+        bg2,
+        cloud1,
+        cloud2,
+        cloud3,
+        cloud4,
+        palm,
+        tree1,
+        tree2,
+        tree3,
+        tree4,
+        tree5,
+        bush1,
+        bush2,
+        bush3,
+        bush4,
+        bush5,
+        bush6,
+        flower1,
+        flower2,
+        flower3,
+        flower4,
+        flower5,
+        fly1,
+        fly2,
+        fruit1,
+        fruit2,
+        fruit3,
+    };
+};
+
+pub const Sprites = struct {
+    textures: [TextureList.count]rl.Texture = undefined,
+
+    pub fn load() !Sprites {
+        var s: Sprites = .{};
+        inline for (TextureList.paths, 0..) |path, i| {
+            s.textures[i] = try rl.loadTexture(path);
+        }
+        return s;
+    }
+
+    pub fn get(self: Sprites, id: TextureList.Id) rl.Texture {
+        return self.textures[@intFromEnum(id)];
+    }
+
+    pub fn deinit(self: *Sprites) void {
+        for (&self.textures) |*tex| {
+            if (tex.id != 0) {
+                rl.unloadTexture(tex.*);
+            }
+        }
+    }
+};
+
 pub fn main() !void {
     rl.initWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Zig/Raylib Engine");
     defer rl.closeWindow();
@@ -252,190 +341,44 @@ pub fn main() !void {
     defer rl.closeAudioDevice();
     rl.setTargetFPS(60);
 
-    const bg_img = try rl.loadImage("assets/hd_bg_1.gif");
-    const bg_texture = try rl.loadTextureFromImage(bg_img);
-    defer rl.unloadImage(bg_img);
-    defer rl.unloadTexture(bg_texture);
+    var spr = try Sprites.load();
+    defer spr.deinit();
 
-    const bg2_img = try rl.loadImage("assets/hd_bg_2.gif");
-    const bg2_texture = try rl.loadTextureFromImage(bg2_img);
-    defer rl.unloadImage(bg2_img);
-    defer rl.unloadTexture(bg2_texture);
-
-    const cloud_img = try rl.loadImage("assets/hd_cloud_1.gif");
-    const cloud_texture = try rl.loadTextureFromImage(cloud_img);
-    defer rl.unloadImage(cloud_img);
-    defer rl.unloadTexture(cloud_texture);
-
-    const cloud2_img = try rl.loadImage("assets/hd_cloud_2.gif");
-    const cloud2_texture = try rl.loadTextureFromImage(cloud2_img);
-    defer rl.unloadImage(cloud2_img);
-    defer rl.unloadTexture(cloud2_texture);
-
-    const cloud3_img = try rl.loadImage("assets/hd_cloud_3.gif");
-    const cloud3_texture = try rl.loadTextureFromImage(cloud3_img);
-    defer rl.unloadImage(cloud3_img);
-    defer rl.unloadTexture(cloud3_texture);
-
-    const cloud4_img = try rl.loadImage("assets/hd_cloud_4.gif");
-    const cloud4_texture = try rl.loadTextureFromImage(cloud4_img);
-    defer rl.unloadImage(cloud4_img);
-    defer rl.unloadTexture(cloud4_texture);
-
-    const tree_img = try rl.loadImage("assets/hd_palm_1.gif");
-    const tree_texture = try rl.loadTextureFromImage(tree_img);
-    defer rl.unloadImage(tree_img);
-    defer rl.unloadTexture(tree_texture);
-
-    const tree2_img = try rl.loadImage("assets/hd_tree_1.gif");
-    const tree2_texture = try rl.loadTextureFromImage(tree2_img);
-    defer rl.unloadImage(tree2_img);
-    defer rl.unloadTexture(tree2_texture);
-
-    const tree3_img = try rl.loadImage("assets/hd_tree_3.gif");
-    const tree3_texture = try rl.loadTextureFromImage(tree3_img);
-    defer rl.unloadImage(tree3_img);
-    defer rl.unloadTexture(tree3_texture);
-
-    const tree4_img = try rl.loadImage("assets/hd_tree_4.gif");
-    const tree4_texture = try rl.loadTextureFromImage(tree4_img);
-    defer rl.unloadImage(tree4_img);
-    defer rl.unloadTexture(tree4_texture);
-
-    const tree5_img = try rl.loadImage("assets/hd_tree_5.gif");
-    const tree5_texture = try rl.loadTextureFromImage(tree5_img);
-    defer rl.unloadImage(tree5_img);
-    defer rl.unloadTexture(tree5_texture);
-
-    const bush_img = try rl.loadImage("assets/hd_bush_1.gif");
-    const bush_texture = try rl.loadTextureFromImage(bush_img);
-    defer rl.unloadImage(bush_img);
-    defer rl.unloadTexture(bush_texture);
-
-    const bush2_img = try rl.loadImage("assets/hd_bush_2.gif");
-    const bush2_texture = try rl.loadTextureFromImage(bush2_img);
-    defer rl.unloadImage(bush2_img);
-    defer rl.unloadTexture(bush2_texture);
-
-    const bush3_img = try rl.loadImage("assets/hd_bush_3.gif");
-    const bush3_texture = try rl.loadTextureFromImage(bush3_img);
-    defer rl.unloadImage(bush3_img);
-    defer rl.unloadTexture(bush3_texture);
-
-    const bush4_img = try rl.loadImage("assets/hd_bush_4.gif");
-    const bush4_texture = try rl.loadTextureFromImage(bush4_img);
-    defer rl.unloadImage(bush4_img);
-    defer rl.unloadTexture(bush4_texture);
-
-    const bush5_img = try rl.loadImage("assets/hd_bush_5.gif");
-    const bush5_texture = try rl.loadTextureFromImage(bush5_img);
-    defer rl.unloadImage(bush5_img);
-    defer rl.unloadTexture(bush5_texture);
-
-    const bush6_img = try rl.loadImage("assets/hd_bush_6.gif");
-    const bush6_texture = try rl.loadTextureFromImage(bush6_img);
-    defer rl.unloadImage(bush6_img);
-    defer rl.unloadTexture(bush6_texture);
-
-    const flower_img = try rl.loadImage("assets/hd_flower_1.gif");
-    const flower_texture = try rl.loadTextureFromImage(flower_img);
-    defer rl.unloadImage(flower_img);
-    defer rl.unloadTexture(flower_texture);
-
-    const flower2_img = try rl.loadImage("assets/hd_flower_2.gif");
-    const flower2_texture = try rl.loadTextureFromImage(flower2_img);
-    defer rl.unloadImage(flower2_img);
-    defer rl.unloadTexture(flower2_texture);
-
-    const flower3_img = try rl.loadImage("assets/hd_flower_3.gif");
-    const flower3_texture = try rl.loadTextureFromImage(flower3_img);
-    defer rl.unloadImage(flower3_img);
-    defer rl.unloadTexture(flower3_texture);
-
-    const flower4_img = try rl.loadImage("assets/hd_flower_4.gif");
-    const flower4_texture = try rl.loadTextureFromImage(flower4_img);
-    defer rl.unloadImage(flower4_img);
-    defer rl.unloadTexture(flower4_texture);
-
-    const flower5_img = try rl.loadImage("assets/hd_flower_5.gif");
-    const flower5_texture = try rl.loadTextureFromImage(flower5_img);
-    defer rl.unloadImage(flower5_img);
-    defer rl.unloadTexture(flower5_texture);
-
-    const fly_img = try rl.loadImage("assets/fly.gif");
-    const fly_texture = try rl.loadTextureFromImage(fly_img);
-    defer rl.unloadImage(fly_img);
-    defer rl.unloadTexture(fly_texture);
-
-    const fly2_img = try rl.loadImage("assets/fly2.gif");
-    const fly2_texture = try rl.loadTextureFromImage(fly2_img);
-    defer rl.unloadImage(fly2_img);
-    defer rl.unloadTexture(fly2_texture);
-
-    const fly_textures = [_]rl.Texture{ fly_texture, fly2_texture };
-
-    const fruit1_img = try rl.loadImage("assets/hd_fruit_1.gif");
-    const fruit1_texture = try rl.loadTextureFromImage(fruit1_img);
-    defer rl.unloadImage(fruit1_img);
-    defer rl.unloadTexture(fruit1_texture);
-
-    const fruit2_img = try rl.loadImage("assets/hd_fruit_2.gif");
-    const fruit2_texture = try rl.loadTextureFromImage(fruit2_img);
-    defer rl.unloadImage(fruit2_img);
-    defer rl.unloadTexture(fruit2_texture);
-
-    const fruit3_img = try rl.loadImage("assets/hd_fruit_3.gif");
-    const fruit3_texture = try rl.loadTextureFromImage(fruit3_img);
-    defer rl.unloadImage(fruit3_img);
-    defer rl.unloadTexture(fruit3_texture);
-
-    const fruit_textures = [_]rl.Texture{ fruit1_texture, fruit2_texture, fruit3_texture };
-
-    const sfx_music = try rl.loadMusicStream("assets/music_1.ogg");
-    defer rl.unloadMusicStream(sfx_music);
-    rl.setMusicVolume(sfx_music, MUSIC_VOLUME);
-    rl.playMusicStream(sfx_music);
-
-    const sfx_intro = try rl.loadSound("assets/intro.ogg");
-    defer rl.unloadSound(sfx_intro);
-    rl.playSound(sfx_intro);
-
-    const sfx_bounce = try rl.loadSound("assets/bounce.ogg");
-    defer rl.unloadSound(sfx_bounce);
-
+    const fly_textures = [_]rl.Texture{ spr.get(.fly1), spr.get(.fly2) };
+    const fruit_textures = [_]rl.Texture{ spr.get(.fruit1), spr.get(.fruit2), spr.get(.fruit3) };
     const trees_defs = [_]rl.Texture{
-        tree_texture,
-        tree2_texture,
-        tree3_texture,
-        tree4_texture,
-        tree5_texture,
-        bush5_texture,
-        bush6_texture,
+        spr.get(.tree1),
+        spr.get(.tree2),
+        spr.get(.tree3),
+        spr.get(.tree4),
+        spr.get(.tree5),
+        spr.get(.bush5),
+        spr.get(.bush6),
     };
 
     const bushes_defs = [_]rl.Texture{
-        bush_texture,
-        bush2_texture,
-        bush3_texture,
-        bush4_texture,
+        spr.get(.bush1),
+        spr.get(.bush2),
+        spr.get(.bush3),
+        spr.get(.bush4),
     };
 
     const flowers_defs = [_]rl.Texture{
-        flower_texture,
-        flower2_texture,
-        flower3_texture,
-        flower4_texture,
-        flower5_texture,
+        spr.get(.flower1),
+        spr.get(.flower2),
+        spr.get(.flower3),
+        spr.get(.flower4),
+        spr.get(.flower5),
     };
 
     const sky_hi_defs = [_]rl.Texture{
-        cloud_texture,
-        cloud2_texture,
+        spr.get(.cloud1),
+        spr.get(.cloud2),
     };
 
     const sky_low_defs = [_]rl.Texture{
-        cloud3_texture,
-        cloud4_texture,
+        spr.get(.cloud3),
+        spr.get(.cloud4),
     };
 
     var layer_clouds_low = ParallaxLayer{ .sprites = undefined, .count = 0, .parallax = 0.02, .textures = &sky_low_defs };
@@ -464,6 +407,9 @@ pub fn main() !void {
     fillLayer(&layer_flower2, WINDOW_HEIGHT - 32, 96, rl.Color.white, 153, WORLD_WIDTH);
     fillLayer(&layer_flower3, WINDOW_HEIGHT, 200, rl.Color.white, 999, WORLD_WIDTH);
 
+    const sfx_bounce = try rl.loadSound("assets/bounce.ogg");
+    defer rl.unloadSound(sfx_bounce);
+
     var player = Entity.init(EntityType.Player, 100, 100, 200.0, &fly_textures, 0.08, sfx_bounce, true);
     var enemy = Entity.init(EntityType.Enemy, 200, 200, 50.0, &fruit_textures, 0.2, sfx_bounce, false);
     var enemy2 = Entity.init(EntityType.Enemy, 300, 300, 50.0, &fruit_textures, 0.2, sfx_bounce, false);
@@ -472,6 +418,15 @@ pub fn main() !void {
     enemy.setVelocity(-40.0, -80.0);
     enemy2.setVelocity(60.0, -40.0);
     enemy3.setVelocity(60.0, 40.0);
+
+    const sfx_music = try rl.loadMusicStream("assets/music_1.ogg");
+    defer rl.unloadMusicStream(sfx_music);
+    rl.setMusicVolume(sfx_music, MUSIC_VOLUME);
+    rl.playMusicStream(sfx_music);
+
+    const sfx_intro = try rl.loadSound("assets/intro.ogg");
+    defer rl.unloadSound(sfx_intro);
+    rl.playSound(sfx_intro);
 
     while (rl.windowShouldClose() == false) {
         const dt: f32 = rl.getFrameTime();
@@ -501,7 +456,7 @@ pub fn main() !void {
         rl.beginDrawing();
         defer rl.endDrawing();
 
-        rl.drawTexture(bg2_texture, 0, 0, rl.Color.white);
+        rl.drawTexture(spr.get(.bg2), 0, 0, rl.Color.white);
 
         layer_clouds_low.draw(camera_x);
         layer_clouds_low2.draw(camera_x);
