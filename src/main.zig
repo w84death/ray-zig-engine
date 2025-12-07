@@ -7,7 +7,7 @@ const WINDOW_HEIGHT = 600;
 const GRAVITY = 98.1;
 const SEED = 87654;
 const MUSIC_VOLUME = 0.4;
-const MAX_SPRITES_PER_LAYER = 256;
+const MAX_SPRITES_PER_LAYER = 64;
 const WORLD_WIDTH = 1200.0;
 
 pub const DB16 = struct {
@@ -29,7 +29,8 @@ pub const DB16 = struct {
     pub const PINK = rl.Color{ .r = 248, .g = 120, .b = 248, .a = 255 };
 };
 
-const Vec2 = struct {
+// pub const Vec2 = rl.Vector2;
+pub const Vec2 = struct {
     x: f32,
     y: f32,
 
@@ -73,32 +74,41 @@ pub const IVec2 = struct {
     }
 };
 
-pub const Block = struct {
+pub const EntityType = enum { Player, Enemy, Pickup, Powerup };
+pub const Entity = struct {
+    kind: EntityType,
     pos: Vec2,
     size: IVec2,
     vel: Vec2 = Vec2.init(0, 0),
     max_vel: f32 = 250.0,
     speed: f32 = 0.0,
     color: rl.Color = rl.Color.white,
-    tex: rl.Texture,
-    tex2: rl.Texture,
+    health: i16 = 100,
+
+    frames: []const rl.Texture,
+    frame_count: usize = 0,
+    current_frame: usize = 0,
+    frame_timer: f32 = 0.0,
+    frame_duration: f32 = 0.1,
+
     flying: bool = false,
-    frame: i8 = 0,
     sfx: rl.Sound,
 
-    pub fn init(x: f32, y: f32, speed: f32, tex: rl.Texture, tex2: rl.Texture, sfx: rl.Sound, flying: bool) Block {
+    pub fn init(kind: EntityType, x: f32, y: f32, speed: f32, frames: []const rl.Texture, frame_duration: f32, sfx: rl.Sound, flying: bool) Entity {
         return .{
+            .kind = kind,
             .pos = Vec2.init(x, y),
-            .size = IVec2.init(tex.width, tex.height),
+            .size = IVec2{ .x = frames[0].width, .y = frames[0].height },
             .speed = speed,
-            .tex = tex,
-            .tex2 = tex2,
-            .flying = flying,
+            .frames = frames,
+            .frame_count = frames.len,
+            .frame_duration = frame_duration,
             .sfx = sfx,
+            .flying = flying,
         };
     }
 
-    pub fn getRect(self: Block) struct { x: i32, y: i32, w: i32, h: i32 } {
+    pub fn getRect(self: Entity) struct { x: i32, y: i32, w: i32, h: i32 } {
         return .{
             .x = @intFromFloat(self.pos.x),
             .y = @intFromFloat(self.pos.y),
@@ -107,14 +117,7 @@ pub const Block = struct {
         };
     }
 
-    pub fn draw(self: Block) void {
-        const t = if (self.frame > 8) self.tex2 else self.tex;
-        var w: f32 = @floatFromInt(self.size.x);
-        if (self.vel.x < 0) w *= -1.0;
-        rl.drawTextureRec(t, .{ .x = 0, .y = 0, .width = w, .height = @floatFromInt(self.size.y) }, rl.Vector2.init(self.pos.x, self.pos.y), self.color);
-    }
-
-    pub fn update(self: *Block, dt: f32) void {
+    pub fn update(self: *Entity, dt: f32) void {
         if (!self.flying) self.vel.y += GRAVITY * dt;
         const new_pos = self.pos.add(.{ .x = self.vel.x * dt, .y = self.vel.y * dt });
         const window_w: f32 = @floatFromInt(WINDOW_WIDTH);
@@ -142,42 +145,43 @@ pub const Block = struct {
             self.vel.y *= 0.98;
         }
 
-        self.frame += 1;
-        self.frame = @mod(self.frame, 16);
+        self.updateAnimation(dt);
         if (play_sfx) rl.playSound(self.sfx);
     }
 
-    pub fn setVelocity(self: *Block, vx: f32, vy: f32) void {
+    pub fn updateAnimation(self: *Entity, dt: f32) void {
+        if (self.frame_count <= 1) return;
+        self.frame_timer += dt;
+        if (self.frame_timer >= self.frame_duration) {
+            self.frame_timer -= self.frame_duration;
+            self.current_frame = (self.current_frame + 1) % self.frame_count;
+        }
+    }
+
+    pub fn draw(self: Entity) void {
+        const tex = self.frames[self.current_frame];
+        var w: f32 = @floatFromInt(tex.width);
+        const h: f32 = @floatFromInt(tex.height);
+        if (self.vel.x < 0) w *= -1.0;
+        rl.drawTextureRec(tex, .{ .x = 0, .y = 0, .width = w, .height = h }, rl.Vector2.init(self.pos.x, self.pos.y), self.color);
+    }
+
+    pub fn setVelocity(self: *Entity, vx: f32, vy: f32) void {
         self.vel = Vec2.init(vx, vy);
     }
 
-    pub fn addVel(self: *Block, vel: Vec2) void {
+    pub fn addVel(self: *Entity, vel: Vec2) void {
         self.vel = self.vel.add(Vec2.init(vel.x * self.speed, vel.y * self.speed));
         self.vel = self.vel.clamp(-self.max_vel, self.max_vel);
     }
 
-    pub fn collidesWidth(self: Block, other: Block) bool {
+    pub fn collidesWidth(self: Entity, other: Entity) bool {
         const a = self.getRect();
         const b = other.getRect();
         return a.x < b.x + b.w and
             a.x + a.w > b.x and
             a.y < b.y + b.h and
             a.y + a.h > b.y;
-    }
-};
-
-pub const EntityType = enum { Player, Enemy, Pickup, Powerup };
-pub const Entity = struct {
-    block: Block,
-    kind: EntityType,
-    health: i32 = 0,
-
-    pub fn init(block: Block, kind: EntityType, health: i32) Entity {
-        return .{
-            .block = block,
-            .kind = kind,
-            .health = health,
-        };
     }
 };
 
@@ -368,6 +372,8 @@ pub fn main() !void {
     defer rl.unloadImage(fly2_img);
     defer rl.unloadTexture(fly2_texture);
 
+    const fly_textures = [_]rl.Texture{ fly_texture, fly2_texture };
+
     const fruit1_img = try rl.loadImage("assets/hd_fruit_1.gif");
     const fruit1_texture = try rl.loadTextureFromImage(fruit1_img);
     defer rl.unloadImage(fruit1_img);
@@ -382,6 +388,8 @@ pub fn main() !void {
     const fruit3_texture = try rl.loadTextureFromImage(fruit3_img);
     defer rl.unloadImage(fruit3_img);
     defer rl.unloadTexture(fruit3_texture);
+
+    const fruit_textures = [_]rl.Texture{ fruit1_texture, fruit2_texture, fruit3_texture };
 
     const sfx_music = try rl.loadMusicStream("assets/music_1.ogg");
     defer rl.unloadMusicStream(sfx_music);
@@ -456,36 +464,36 @@ pub fn main() !void {
     fillLayer(&layer_flower2, WINDOW_HEIGHT - 32, 96, rl.Color.white, 153, WORLD_WIDTH);
     fillLayer(&layer_flower3, WINDOW_HEIGHT, 200, rl.Color.white, 999, WORLD_WIDTH);
 
-    var player = Entity.init(Block.init(100, 100, 200.0, fly_texture, fly2_texture, sfx_bounce, true), EntityType.Player, 100);
-    var enemy = Entity.init(Block.init(200, 200, 50.0, fruit1_texture, fruit1_texture, sfx_bounce, false), EntityType.Enemy, 10);
-    var enemy2 = Entity.init(Block.init(300, 300, 50.0, fruit2_texture, fruit2_texture, sfx_bounce, false), EntityType.Enemy, 10);
-    var enemy3 = Entity.init(Block.init(400, 200, 50.0, fruit3_texture, fruit3_texture, sfx_bounce, false), EntityType.Enemy, 10);
+    var player = Entity.init(EntityType.Player, 100, 100, 200.0, &fly_textures, 0.08, sfx_bounce, true);
+    var enemy = Entity.init(EntityType.Enemy, 200, 200, 50.0, &fruit_textures, 0.2, sfx_bounce, false);
+    var enemy2 = Entity.init(EntityType.Enemy, 300, 300, 50.0, &fruit_textures, 0.2, sfx_bounce, false);
+    var enemy3 = Entity.init(EntityType.Enemy, 400, 200, 50.0, &fruit_textures, 0.2, sfx_bounce, false);
 
-    enemy.block.setVelocity(-40.0, -80.0);
-    enemy2.block.setVelocity(60.0, -40.0);
-    enemy3.block.setVelocity(60.0, 40.0);
+    enemy.setVelocity(-40.0, -80.0);
+    enemy2.setVelocity(60.0, -40.0);
+    enemy3.setVelocity(60.0, 40.0);
 
     while (rl.windowShouldClose() == false) {
         const dt: f32 = rl.getFrameTime();
         rl.updateMusicStream(sfx_music);
 
-        if (rl.isKeyDown(rl.KeyboardKey.right)) player.block.addVel(Vec2.init(dt, 0.0));
-        if (rl.isKeyDown(rl.KeyboardKey.left)) player.block.addVel(Vec2.init(-dt, 0.0));
-        if (rl.isKeyDown(rl.KeyboardKey.up)) player.block.addVel(Vec2.init(0.0, -dt));
-        if (rl.isKeyDown(rl.KeyboardKey.down)) player.block.addVel(Vec2.init(0.0, dt));
+        if (rl.isKeyDown(rl.KeyboardKey.right)) player.addVel(Vec2.init(dt, 0.0));
+        if (rl.isKeyDown(rl.KeyboardKey.left)) player.addVel(Vec2.init(-dt, 0.0));
+        if (rl.isKeyDown(rl.KeyboardKey.up)) player.addVel(Vec2.init(0.0, -dt));
+        if (rl.isKeyDown(rl.KeyboardKey.down)) player.addVel(Vec2.init(0.0, dt));
 
-        player.block.update(dt);
-        enemy.block.update(dt);
-        enemy2.block.update(dt);
-        enemy3.block.update(dt);
+        player.update(dt);
+        enemy.update(dt);
+        enemy2.update(dt);
+        enemy3.update(dt);
 
-        const colliding = player.block.collidesWidth(enemy.block) or player.block.collidesWidth(enemy2.block) or player.block.collidesWidth(enemy3.block);
-        const camera_x = player.block.pos.x - WINDOW_WIDTH / 2.0;
+        const colliding = player.collidesWidth(enemy) or player.collidesWidth(enemy2) or player.collidesWidth(enemy3);
+        const camera_x = player.pos.x - WINDOW_WIDTH / 2.0;
 
         if (colliding) {
             player.health -= 1;
             if (player.health <= 0) {
-                player.block.pos = Vec2.init(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
+                player.pos = Vec2.init(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
                 player.health = 100;
             }
         }
@@ -501,10 +509,10 @@ pub fn main() !void {
         layer_bush.draw(camera_x);
         layer_flower.draw(camera_x);
         layer_tree2.draw(camera_x);
-        player.block.draw();
-        enemy.block.draw();
-        enemy2.block.draw();
-        enemy3.block.draw();
+        player.draw();
+        enemy.draw();
+        enemy2.draw();
+        enemy3.draw();
         layer_flower2.draw(camera_x);
         layer_bush2.draw(camera_x);
         layer_flower3.draw(camera_x);
