@@ -1,10 +1,13 @@
 const std = @import("std");
 const rl = @import("raylib");
+const ArrayList = std.ArrayList;
+
 const WINDOW_WIDTH = 640;
 const WINDOW_HEIGHT = 480;
 const GRAVITY = 98.1;
-const SEED = 1337;
+const SEED = 87654;
 const MUSIC_VOLUME = 0.4;
+const MAX_SPRITES_PER_LAYER = 256;
 
 pub const DB16 = struct {
     pub const BLACK = rl.Color{ .r = 20, .g = 12, .b = 28, .a = 255 };
@@ -177,30 +180,71 @@ pub const Entity = struct {
     }
 };
 
-fn drawProceduralSprites(camera_x: f32, ground_y: f32, defs: []const rl.Texture, tint: rl.Color, density: f32, seed: u64) void {
-    var rng = std.Random.DefaultPrng.init(seed);
-    const rng_rand = rng.random();
-    const random = std.Random.float(rng_rand, f32);
-    var x: f32 = -200;
-    while (x < camera_x + WINDOW_WIDTH + 300) : (x += density + random * density) {
-        const kind_roll = std.Random.float(rng_rand, f32);
-        const l: f32 = @floatFromInt(defs.len);
-        const def = defs[@intFromFloat(kind_roll * l)];
-        const sprite_h: f32 = @floatFromInt(def.height);
-        const h: f32 = kind_roll * sprite_h * 0.75;
-        const y: i32 = @intFromFloat(ground_y - sprite_h + h + 12.0);
-        const screen_x: i32 = @intFromFloat(x - camera_x);
-        rl.drawTexture(def, screen_x, y, tint);
+const ParallaxSprite = struct {
+    x: f32,
+    y: f32,
+    tex_index: u8,
+    tint: rl.Color,
+};
+
+const ParallaxLayer = struct {
+    sprites: [MAX_SPRITES_PER_LAYER]ParallaxSprite,
+    count: usize,
+    parallax: f32,
+    textures: []const rl.Texture,
+
+    pub fn draw(self: *const ParallaxLayer, camera_x: f32) void {
+        const offset_x = camera_x * self.parallax;
+        var i: usize = 0;
+        while (i < self.count) : (i += 1) {
+            const spr = self.sprites[i];
+            const screen_x = spr.x - offset_x;
+            if (screen_x > -400 and screen_x < WINDOW_WIDTH + 400) {
+                const tex = self.textures[spr.tex_index];
+                rl.drawTexture(tex, @intFromFloat(screen_x), @intFromFloat(spr.y), spr.tint);
+            }
+        }
     }
+};
+
+fn fillLayer(
+    layer: *ParallaxLayer,
+    ground_y: f32,
+    base_density: f32,
+    tint: rl.Color,
+    seed_offset: u64,
+    world_width: f32,
+) void {
+    var rng = std.Random.DefaultPrng.init(SEED + seed_offset);
+    const rand = rng.random();
+
+    var x: f32 = -500;
+    var idx: usize = 0;
+
+    while (x < world_width + 500 and idx < MAX_SPRITES_PER_LAYER) : ({
+        x += base_density + rand.float(f32) * base_density * 0.7;
+        idx += 1;
+    }) {
+        const tex_idx = rand.uintLessThan(u8, @as(u8, @intCast(layer.textures.len)));
+        const tex = layer.textures[tex_idx];
+        const h_offset = rand.float(f32) * @as(f32, @floatFromInt(tex.height)) * 0.6;
+        const y = ground_y - @as(f32, @floatFromInt(tex.height)) + h_offset;
+
+        layer.sprites[idx] = ParallaxSprite{
+            .x = x,
+            .y = y,
+            .tex_index = tex_idx,
+            .tint = tint,
+        };
+    }
+    layer.count = idx;
 }
 
 pub fn main() !void {
     rl.initWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Zig/Raylib Engine");
     defer rl.closeWindow();
-
     rl.initAudioDevice();
     defer rl.closeAudioDevice();
-
     rl.setTargetFPS(60);
 
     const bg_img = try rl.loadImage("assets/hd_bg_1.gif");
@@ -228,15 +272,30 @@ pub fn main() !void {
     defer rl.unloadImage(cloud4_img);
     defer rl.unloadTexture(cloud4_texture);
 
-    const palm_img = try rl.loadImage("assets/hd_palm_1.gif");
-    const palm_texture = try rl.loadTextureFromImage(palm_img);
-    defer rl.unloadImage(palm_img);
-    defer rl.unloadTexture(palm_texture);
+    const tree_img = try rl.loadImage("assets/hd_palm_1.gif");
+    const tree_texture = try rl.loadTextureFromImage(tree_img);
+    defer rl.unloadImage(tree_img);
+    defer rl.unloadTexture(tree_texture);
 
-    const palm2_img = try rl.loadImage("assets/hd_tree_1.gif");
-    const palm2_texture = try rl.loadTextureFromImage(palm2_img);
-    defer rl.unloadImage(palm2_img);
-    defer rl.unloadTexture(palm2_texture);
+    const tree2_img = try rl.loadImage("assets/hd_tree_1.gif");
+    const tree2_texture = try rl.loadTextureFromImage(tree2_img);
+    defer rl.unloadImage(tree2_img);
+    defer rl.unloadTexture(tree2_texture);
+
+    const tree3_img = try rl.loadImage("assets/hd_tree_3.gif");
+    const tree3_texture = try rl.loadTextureFromImage(tree3_img);
+    defer rl.unloadImage(tree3_img);
+    defer rl.unloadTexture(tree3_texture);
+
+    const tree4_img = try rl.loadImage("assets/hd_tree_4.gif");
+    const tree4_texture = try rl.loadTextureFromImage(tree4_img);
+    defer rl.unloadImage(tree4_img);
+    defer rl.unloadTexture(tree4_texture);
+
+    const tree5_img = try rl.loadImage("assets/hd_tree_5.gif");
+    const tree5_texture = try rl.loadTextureFromImage(tree5_img);
+    defer rl.unloadImage(tree5_img);
+    defer rl.unloadTexture(tree5_texture);
 
     const bush_img = try rl.loadImage("assets/hd_bush_1.gif");
     const bush_texture = try rl.loadTextureFromImage(bush_img);
@@ -247,6 +306,26 @@ pub fn main() !void {
     const bush2_texture = try rl.loadTextureFromImage(bush2_img);
     defer rl.unloadImage(bush2_img);
     defer rl.unloadTexture(bush2_texture);
+
+    const bush3_img = try rl.loadImage("assets/hd_bush_3.gif");
+    const bush3_texture = try rl.loadTextureFromImage(bush3_img);
+    defer rl.unloadImage(bush3_img);
+    defer rl.unloadTexture(bush3_texture);
+
+    const bush4_img = try rl.loadImage("assets/hd_bush_4.gif");
+    const bush4_texture = try rl.loadTextureFromImage(bush4_img);
+    defer rl.unloadImage(bush4_img);
+    defer rl.unloadTexture(bush4_texture);
+
+    const bush5_img = try rl.loadImage("assets/hd_bush_5.gif");
+    const bush5_texture = try rl.loadTextureFromImage(bush5_img);
+    defer rl.unloadImage(bush5_img);
+    defer rl.unloadTexture(bush5_texture);
+
+    const bush6_img = try rl.loadImage("assets/hd_bush_6.gif");
+    const bush6_texture = try rl.loadTextureFromImage(bush6_img);
+    defer rl.unloadImage(bush6_img);
+    defer rl.unloadTexture(bush6_texture);
 
     const flower_img = try rl.loadImage("assets/hd_flower_1.gif");
     const flower_texture = try rl.loadTextureFromImage(flower_img);
@@ -272,34 +351,6 @@ pub fn main() !void {
     const flower5_texture = try rl.loadTextureFromImage(flower5_img);
     defer rl.unloadImage(flower5_img);
     defer rl.unloadTexture(flower5_texture);
-
-    const trees_defs = [_]rl.Texture{
-        palm_texture,
-        palm2_texture,
-    };
-
-    const plants_defs = [_]rl.Texture{
-        bush_texture,
-        bush2_texture,
-    };
-
-    const flowers_defs = [_]rl.Texture{
-        flower_texture,
-        flower2_texture,
-        flower3_texture,
-        flower4_texture,
-        flower5_texture,
-    };
-
-    const sky_hi_defs = [_]rl.Texture{
-        cloud_texture,
-        cloud2_texture,
-    };
-
-    const sky_low_defs = [_]rl.Texture{
-        cloud3_texture,
-        cloud4_texture,
-    };
 
     const fly_img = try rl.loadImage("assets/fly.gif");
     const fly_texture = try rl.loadTextureFromImage(fly_img);
@@ -338,6 +389,65 @@ pub fn main() !void {
     const sfx_bounce = try rl.loadSound("assets/bounce.ogg");
     defer rl.unloadSound(sfx_bounce);
 
+    const trees_defs = [_]rl.Texture{
+        tree_texture,
+        tree2_texture,
+        tree3_texture,
+        tree4_texture,
+        tree5_texture,
+        bush5_texture,
+        bush6_texture,
+    };
+
+    const plants_defs = [_]rl.Texture{
+        bush_texture,
+        bush2_texture,
+        bush3_texture,
+        bush4_texture,
+    };
+
+    const flowers_defs = [_]rl.Texture{
+        flower_texture,
+        flower2_texture,
+        flower3_texture,
+        flower4_texture,
+        flower5_texture,
+    };
+
+    const sky_hi_defs = [_]rl.Texture{
+        cloud_texture,
+        cloud2_texture,
+    };
+
+    const sky_low_defs = [_]rl.Texture{
+        cloud3_texture,
+        cloud4_texture,
+    };
+
+    var layer1 = ParallaxLayer{ .sprites = undefined, .count = 0, .parallax = 0.02, .textures = &sky_hi_defs };
+    var layer2 = ParallaxLayer{ .sprites = undefined, .count = 0, .parallax = 0.05, .textures = &sky_hi_defs };
+    var layer3 = ParallaxLayer{ .sprites = undefined, .count = 0, .parallax = 0.08, .textures = &sky_low_defs };
+    var layer4 = ParallaxLayer{ .sprites = undefined, .count = 0, .parallax = 0.10, .textures = &sky_low_defs };
+    var layer5 = ParallaxLayer{ .sprites = undefined, .count = 0, .parallax = 0.30, .textures = &trees_defs };
+    var layer6 = ParallaxLayer{ .sprites = undefined, .count = 0, .parallax = 0.50, .textures = &trees_defs };
+    var layer7 = ParallaxLayer{ .sprites = undefined, .count = 0, .parallax = 0.60, .textures = &plants_defs };
+    var layer8 = ParallaxLayer{ .sprites = undefined, .count = 0, .parallax = 0.80, .textures = &plants_defs };
+    var layer9 = ParallaxLayer{ .sprites = undefined, .count = 0, .parallax = 0.90, .textures = &flowers_defs };
+    var layer10 = ParallaxLayer{ .sprites = undefined, .count = 0, .parallax = 1.00, .textures = &flowers_defs };
+
+    const WORLD_WIDTH = 12000.0;
+
+    fillLayer(&layer1, 100, 180, rl.Color.white, 111, WORLD_WIDTH);
+    fillLayer(&layer2, 140, 220, rl.Color.init(255, 255, 255, 180), 112, WORLD_WIDTH);
+    fillLayer(&layer3, 200, 300, rl.Color.white, 321, WORLD_WIDTH);
+    fillLayer(&layer4, 240, 340, rl.Color.init(255, 255, 255, 200), 322, WORLD_WIDTH);
+    fillLayer(&layer5, WINDOW_HEIGHT, 120, rl.Color.init(220, 220, 230, 255), 1444, WORLD_WIDTH);
+    fillLayer(&layer6, WINDOW_HEIGHT, 180, rl.Color.init(180, 180, 200, 255), 3232, WORLD_WIDTH);
+    fillLayer(&layer7, WINDOW_HEIGHT, 80, rl.Color.init(200, 220, 200, 255), 333, WORLD_WIDTH);
+    fillLayer(&layer8, WINDOW_HEIGHT, 100, rl.Color.white, 123, WORLD_WIDTH);
+    fillLayer(&layer9, WINDOW_HEIGHT, 60, rl.Color.init(255, 255, 220, 240), 988, WORLD_WIDTH);
+    fillLayer(&layer10, WINDOW_HEIGHT, 50, rl.Color.init(255, 240, 255, 220), 1523, WORLD_WIDTH);
+
     var player = Entity.init(Block.init(100, 100, 200.0, fly_texture, fly2_texture, sfx_bounce, true), EntityType.Player, 100);
     var enemy = Entity.init(Block.init(200, 200, 50.0, fruit1_texture, fruit1_texture, sfx_bounce, false), EntityType.Enemy, 10);
     var enemy2 = Entity.init(Block.init(300, 300, 50.0, fruit2_texture, fruit2_texture, sfx_bounce, false), EntityType.Enemy, 10);
@@ -362,26 +472,27 @@ pub fn main() !void {
         enemy3.block.update(dt);
 
         const colliding = player.block.collidesWidth(enemy.block) or player.block.collidesWidth(enemy2.block) or player.block.collidesWidth(enemy3.block);
+        const camera_x = player.block.pos.x - WINDOW_WIDTH / 2.0;
 
         rl.beginDrawing();
         defer rl.endDrawing();
 
         rl.drawTexture(bg_texture, 0, 0, rl.Color.white);
 
-        drawProceduralSprites(player.block.pos.x * 0.02, 128.0, &sky_hi_defs, rl.Color.white, 128, SEED + 111);
-        drawProceduralSprites(0, 256.0, &sky_low_defs, rl.Color.white, 64, SEED + 321);
-        drawProceduralSprites(player.block.pos.x * 0.02, WINDOW_HEIGHT, &trees_defs, rl.Color.init(192, 192, 192, 255), 50, SEED + 1444);
-        drawProceduralSprites(player.block.pos.x * 0.04, WINDOW_HEIGHT, &plants_defs, rl.Color.init(192, 192, 192, 255), 64, SEED + 333);
-        drawProceduralSprites(player.block.pos.x * 0.04, WINDOW_HEIGHT, &flowers_defs, rl.Color.init(192, 192, 192, 255), 48, SEED + 988);
+        layer1.draw(camera_x);
+        layer2.draw(camera_x);
+        layer3.draw(camera_x);
+        layer4.draw(camera_x);
+        layer5.draw(camera_x);
         player.block.draw();
         enemy.block.draw();
         enemy2.block.draw();
         enemy3.block.draw();
-        drawProceduralSprites(player.block.pos.x * 0.05, WINDOW_HEIGHT, &trees_defs, rl.Color.white, 96, SEED + 3232);
-        drawProceduralSprites(player.block.pos.x * 0.1, WINDOW_HEIGHT, &plants_defs, rl.Color.init(192, 192, 192, 255), 64, SEED + 123);
-        drawProceduralSprites(player.block.pos.x * 0.125, WINDOW_HEIGHT, &flowers_defs, rl.Color.init(192, 192, 192, 255), 32, SEED + 1523);
-        drawProceduralSprites(player.block.pos.x * 0.15, WINDOW_HEIGHT, &plants_defs, rl.Color.white, 64, SEED + 4323);
-        drawProceduralSprites(player.block.pos.x * 0.1, 64.0, &sky_hi_defs, rl.Color.white, 96, SEED + 123);
+        layer6.draw(camera_x);
+        layer7.draw(camera_x);
+        layer8.draw(camera_x);
+        layer9.draw(camera_x);
+        layer10.draw(camera_x);
 
         rl.drawRectangle(2, 2, 38, 32, DB16.YELLOW);
         var fps_buffer: [32]u8 = undefined;
