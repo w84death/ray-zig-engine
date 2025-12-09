@@ -1,6 +1,6 @@
 const rl = @import("raylib");
 const std = @import("std");
-const tl = @import("../texture_list.zig").TextureList;
+const tl = @import("../game/texture_list.zig").TextureList;
 
 pub const Sprites = struct {
     textures: [tl.count]rl.Texture = undefined,
