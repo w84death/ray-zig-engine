@@ -230,7 +230,7 @@ pub const GameState = struct {
         if (rl.isKeyPressed(rl.KeyboardKey.one)) self.skip_factor = 1;
         if (rl.isKeyPressed(rl.KeyboardKey.two)) self.skip_factor = 10;
         if (rl.isKeyPressed(rl.KeyboardKey.three)) self.skip_factor = 100;
-        if (rl.isKeyPressed(rl.KeyboardKey.four)) self.skip_factor = 1000;
+        if (rl.isKeyPressed(rl.KeyboardKey.four)) self.skip_factor = 500;
 
         // Update camera position
         const cx = self.cam_state.distance * std.math.sin(self.cam_state.phi) * std.math.cos(self.cam_state.theta);
@@ -255,7 +255,14 @@ pub const GameState = struct {
                 .b = s.b,
                 .a = s.a,
             };
-            rl.drawPoint3D(rl.Vector3{ .x = s.pos[0], .y = s.pos[1], .z = s.pos[2] }, color);
+            const p = rl.Vector3{ .x = s.pos[0], .y = s.pos[1], .z = s.pos[2] };
+            const size = 0.01;
+            rl.drawTriangle3D(
+                rl.Vector3{ .x = p.x + size, .y = p.y - size, .z = p.z },
+                rl.Vector3{ .x = p.x - size, .y = p.y - size, .z = p.z },
+                rl.Vector3{ .x = p.x, .y = p.y + size, .z = p.z },
+                color,
+            );
         }
 
         rl.endMode3D();
