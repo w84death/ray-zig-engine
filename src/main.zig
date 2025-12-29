@@ -13,11 +13,10 @@ const CamState = struct {
 
 const Splat = struct {
     pos: [3]f32,
-    scale: [3]f32,
-    r: f32,
-    g: f32,
-    b: f32,
-    a: f32,
+    r: u8,
+    g: u8,
+    b: u8,
+    a: u8,
 };
 
 const PlyLoadResult = struct {
@@ -65,82 +64,41 @@ fn loadPly(allocator: std.mem.Allocator) !PlyLoadResult {
     if (vertex_count == 0) return error.InvalidPly;
 
     const data = ply_data[data_start..];
-    const is_ascii = std.mem.indexOf(u8, header, "format ascii") != null;
 
     const splats = try allocator.alloc(Splat, vertex_count);
-    if (is_ascii) {
-        std.debug.print("Loading ASCII PLY file with {} vertices...\n", .{vertex_count});
-        // ASCII parsing
-        var lines_data = std.mem.splitScalar(u8, data, '\n');
-        var i: usize = 0;
-        while (lines_data.next()) |raw_line| {
-            const line = std.mem.trim(u8, raw_line, &std.ascii.whitespace);
-            if (line.len == 0) continue;
-            var fields = std.mem.splitAny(u8, line, " ");
-            var pos: [3]f32 = undefined;
-            var color_f: [3]f32 = undefined;
-            var opacity: f32 = 0;
-            var scale_f: [3]f32 = undefined;
-            var field_idx: usize = 0;
-            while (fields.next()) |field| {
-                if (field.len == 0) continue;
-                const val = try std.fmt.parseFloat(f32, field);
-                const prop_name = if (field_idx < properties.items.len) properties.items[field_idx] else "";
-                if (std.mem.eql(u8, prop_name, "x")) pos[0] = val else if (std.mem.eql(u8, prop_name, "y")) pos[1] = val else if (std.mem.eql(u8, prop_name, "z")) pos[2] = val else if (std.mem.eql(u8, prop_name, "f_dc_0")) color_f[0] = val else if (std.mem.eql(u8, prop_name, "f_dc_1")) color_f[1] = val else if (std.mem.eql(u8, prop_name, "f_dc_2")) color_f[2] = val else if (std.mem.eql(u8, prop_name, "opacity")) opacity = val else if (std.mem.eql(u8, prop_name, "scale_0")) scale_f[0] = val else if (std.mem.eql(u8, prop_name, "scale_1")) scale_f[1] = val else if (std.mem.eql(u8, prop_name, "scale_2")) scale_f[2] = val;
-                field_idx += 1;
-            }
-            const r = (0.5 + color_f[0]) * 255.0;
-            const g = (0.5 + color_f[1]) * 255.0;
-            const b = (0.5 + color_f[2]) * 255.0;
-            const a = (1.0 / (1.0 + std.math.exp(-opacity))) * 255.0;
-            const scale = [_]f32{ std.math.exp(scale_f[0]), std.math.exp(scale_f[1]), std.math.exp(scale_f[2]) };
-            splats[i] = Splat{
-                .pos = pos,
-                .scale = scale,
-                .r = r,
-                .g = g,
-                .b = b,
-                .a = a,
-            };
-            i += 1;
-            if (i % 50000 == 0 or i == vertex_count) std.debug.print("Loaded {}/{} vertices\n", .{ i, vertex_count });
-            if (i == vertex_count) break;
+    std.debug.print("Loading binary PLY file with {} vertices...\n", .{vertex_count});
+    // Binary parsing
+    const stride = properties.items.len;
+    const vertex_data_size = vertex_count * stride * 4;
+    if (vertex_data_size > data.len) return error.InvalidData;
+    const f32_slice = std.mem.bytesAsSlice(f32, data[0..vertex_data_size]);
+    for (0..vertex_count) |ii| {
+        const off = ii * stride;
+        var pos: [3]f32 = undefined;
+        var color_f: [3]f32 = undefined;
+        var opacity: f32 = 0;
+        for (properties.items, 0..) |name, idx| {
+            const val = f32_slice[off + idx];
+            if (std.mem.eql(u8, name, "x")) pos[0] = val else if (std.mem.eql(u8, name, "y")) pos[1] = val else if (std.mem.eql(u8, name, "z")) pos[2] = val else if (std.mem.eql(u8, name, "f_dc_0")) color_f[0] = val else if (std.mem.eql(u8, name, "f_dc_1")) color_f[1] = val else if (std.mem.eql(u8, name, "f_dc_2")) color_f[2] = val else if (std.mem.eql(u8, name, "opacity")) opacity = val;
         }
-        std.debug.print("Finished loading {} vertices from ASCII PLY\n", .{vertex_count});
-    } else {
-        std.debug.print("Loading binary PLY file with {} vertices...\n", .{vertex_count});
-        // Binary parsing
-        const stride = properties.items.len;
-        const vertex_data_size = vertex_count * stride * 4;
-        if (vertex_data_size > data.len) return error.InvalidData;
-        const f32_slice = std.mem.bytesAsSlice(f32, data[0..vertex_data_size]);
-        for (0..vertex_count) |ii| {
-            const off = ii * stride;
-            var pos: [3]f32 = undefined;
-            var color_f: [3]f32 = undefined;
-            var opacity: f32 = 0;
-            var scale_f: [3]f32 = undefined;
-            for (properties.items, 0..) |name, idx| {
-                const val = f32_slice[off + idx];
-                if (std.mem.eql(u8, name, "x")) pos[0] = val else if (std.mem.eql(u8, name, "y")) pos[1] = val else if (std.mem.eql(u8, name, "z")) pos[2] = val else if (std.mem.eql(u8, name, "f_dc_0")) color_f[0] = val else if (std.mem.eql(u8, name, "f_dc_1")) color_f[1] = val else if (std.mem.eql(u8, name, "f_dc_2")) color_f[2] = val else if (std.mem.eql(u8, name, "opacity")) opacity = val else if (std.mem.eql(u8, name, "scale_0")) scale_f[0] = val else if (std.mem.eql(u8, name, "scale_1")) scale_f[1] = val else if (std.mem.eql(u8, name, "scale_2")) scale_f[2] = val;
-            }
-            const r = (0.5 + color_f[0]) * 255.0;
-            const g = (0.5 + color_f[1]) * 255.0;
-            const b = (0.5 + color_f[2]) * 255.0;
-            const a = (1.0 / (1.0 + std.math.exp(-opacity))) * 255.0;
-            const scale = [_]f32{ std.math.exp(scale_f[0]), std.math.exp(scale_f[1]), std.math.exp(scale_f[2]) };
-            splats[ii] = Splat{
-                .pos = pos,
-                .scale = scale,
-                .r = r,
-                .g = g,
-                .b = b,
-                .a = a,
-            };
-            if (ii % 10000 == 0 or ii == vertex_count - 1) std.debug.print("Loaded {}/{} vertices\n", .{ ii + 1, vertex_count });
-        }
-        std.debug.print("Finished loading {} vertices from binary PLY\n", .{vertex_count});
+        const r_val = std.math.clamp((0.5 + color_f[0]) * 255.0, 0.0, 255.0);
+        const g_val = std.math.clamp((0.5 + color_f[1]) * 255.0, 0.0, 255.0);
+        const b_val = std.math.clamp((0.5 + color_f[2]) * 255.0, 0.0, 255.0);
+        const a_val = std.math.clamp((1.0 / (1.0 + std.math.exp(-opacity))) * 255.0, 0.0, 255.0);
+        const r = @as(u8, @intFromFloat(r_val));
+        const g = @as(u8, @intFromFloat(g_val));
+        const b = @as(u8, @intFromFloat(b_val));
+        const a = @as(u8, @intFromFloat(a_val));
+        splats[ii] = Splat{
+            .pos = pos,
+            .r = r,
+            .g = g,
+            .b = b,
+            .a = a,
+        };
+        if (ii % 100000 == 0 or ii == vertex_count - 1) std.debug.print("Loaded {}/{} vertices\n", .{ ii + 1, vertex_count });
     }
+    std.debug.print("Finished loading {} vertices from binary PLY\n", .{vertex_count});
 
     return PlyLoadResult{
         .ply_data = ply_data,
@@ -236,7 +194,7 @@ pub const GameState = struct {
         // Mouse drag for rotation
         if (rl.isMouseButtonDown(rl.MouseButton.left)) {
             const delta = rl.getMouseDelta();
-            const sensitivity: f32 = 0.0001;
+            const sensitivity: f32 = 0.001;
             self.cam_state.theta += delta.x * sensitivity;
             self.cam_state.phi += delta.y * sensitivity;
             self.cam_state.phi = std.math.clamp(self.cam_state.phi, -std.math.pi / 2.0, std.math.pi / 2.0);
@@ -262,10 +220,10 @@ pub const GameState = struct {
             const s = self.splats[i];
             const pos = rl.Vector3{ .x = s.pos[0], .y = s.pos[1], .z = s.pos[2] };
             const color = rl.Color{
-                .r = @as(u8, @intFromFloat(std.math.clamp(s.r, 0, 255))),
-                .g = @as(u8, @intFromFloat(std.math.clamp(s.g, 0, 255))),
-                .b = @as(u8, @intFromFloat(std.math.clamp(s.b, 0, 255))),
-                .a = @as(u8, @intFromFloat(std.math.clamp(s.a, 0, 255))),
+                .r = s.r,
+                .g = s.g,
+                .b = s.b,
+                .a = s.a,
             };
             rl.drawPoint3D(pos, color);
         }
