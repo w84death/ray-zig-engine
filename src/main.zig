@@ -63,7 +63,7 @@ pub const GameState = struct {
                 .z = center[2] + distance * std.math.sin(phi) * std.math.sin(theta),
             },
             .target = .{ .x = center[0], .y = center[1], .z = center[2] },
-            .up = .{ .x = 0, .y = 1, .z = 0 },
+            .up = .{ .x = 0, .y = -1, .z = 0 },
             .fovy = 45,
             .projection = rl.CameraProjection.perspective,
         };
@@ -128,10 +128,13 @@ pub const GameState = struct {
         for (0..self.splats.len) |i| {
             if (i % 100 != 0) continue;
             const s = self.splats[i];
-            const r_val = std.math.clamp(s.r * 255, 0, 255);
-            const g_val = std.math.clamp(s.g * 255, 0, 255);
-            const size = 0.025; // small cube size
-            rl.drawCube(rl.Vector3{ .x = s.pos[0], .y = s.pos[1], .z = s.pos[2] }, size, size, size, rl.Color{ .r = @intFromFloat(r_val), .g = @intFromFloat(g_val), .b = 0, .a = 255 });
+            const size = 0.05; // small cube size
+            rl.drawLine3D(
+                rl.Vector3{ .x = s.pos[0], .y = s.pos[1], .z = s.pos[2] },
+                rl.Vector3{ .x = s.pos[0], .y = s.pos[1], .z = s.pos[2] + size },
+
+                rl.Color.white,
+            );
         }
 
         rl.endMode3D();
