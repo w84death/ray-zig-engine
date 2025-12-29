@@ -79,6 +79,7 @@ pub const GameState = struct {
 
         const splats = try allocator.alloc(Splat, vertex_count);
         if (is_ascii) {
+            std.debug.print("Loading ASCII PLY file with {} vertices...\n", .{vertex_count});
             // ASCII parsing
             var lines_data = std.mem.splitScalar(u8, data, '\n');
             var i: usize = 0;
@@ -112,9 +113,12 @@ pub const GameState = struct {
                     .a = a,
                 };
                 i += 1;
+                if (i % 10000 == 0 or i == vertex_count) std.debug.print("Loaded {}/{} vertices\n", .{ i, vertex_count });
                 if (i == vertex_count) break;
             }
+            std.debug.print("Finished loading {} vertices from ASCII PLY\n", .{vertex_count});
         } else {
+            std.debug.print("Loading binary PLY file with {} vertices...\n", .{vertex_count});
             // Binary parsing
             const stride = properties.items.len;
             const vertex_data_size = vertex_count * stride * 4;
@@ -143,7 +147,9 @@ pub const GameState = struct {
                     .b = b,
                     .a = a,
                 };
+                if (ii % 10000 == 0 or ii == vertex_count - 1) std.debug.print("Loaded {}/{} vertices\n", .{ ii + 1, vertex_count });
             }
+            std.debug.print("Finished loading {} vertices from binary PLY\n", .{vertex_count});
         }
 
         rl.setMousePosition(GameState.config.width / 2, GameState.config.height / 2);
