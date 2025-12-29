@@ -104,12 +104,9 @@ pub const GameState = struct {
         // Mouse drag for rotation
         if (rl.isMouseButtonDown(rl.MouseButton.left)) {
             const delta = rl.getMouseDelta();
-            const sensitivity: f32 = 0.005;
+            const sensitivity: f32 = 0.001;
             self.cam_state.theta += delta.x * sensitivity;
             self.cam_state.phi += delta.y * sensitivity;
-            const phi_min = -std.math.pi / 2.0;
-            const phi_max = std.math.pi / 2.0;
-            self.cam_state.phi = std.math.clamp(self.cam_state.phi, phi_min, phi_max);
             rl.setMousePosition(GameState.config.width / 2, GameState.config.height / 2);
         }
 
@@ -129,11 +126,11 @@ pub const GameState = struct {
 
         // Render every 20th splat to show whole picture with less resolution
         for (0..self.splats.len) |i| {
-            if (i % 500 != 0) continue;
+            if (i % 100 != 0) continue;
             const s = self.splats[i];
             const r_val = std.math.clamp(s.r * 255, 0, 255);
             const g_val = std.math.clamp(s.g * 255, 0, 255);
-            const size = 0.02; // small cube size
+            const size = 0.025; // small cube size
             rl.drawCube(rl.Vector3{ .x = s.pos[0], .y = s.pos[1], .z = s.pos[2] }, size, size, size, rl.Color{ .r = @intFromFloat(r_val), .g = @intFromFloat(g_val), .b = 0, .a = 255 });
         }
 
