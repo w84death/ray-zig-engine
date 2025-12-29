@@ -18,8 +18,8 @@ const Splat = struct {
 
 pub const GameState = struct {
     pub const config = .{
-        .width = 800,
-        .height = 600,
+        .width = 1024,
+        .height = 800,
         .title = "Gaussian Splat Viewer",
         .target_fps = 60,
     };
@@ -52,17 +52,15 @@ pub const GameState = struct {
         rl.hideCursor();
 
         const center: [3]f32 = [_]f32{ 0, 0, 0 };
-        const radius: f32 = 1.0;
-
-        const distance = radius * 2.0;
-        const theta = std.math.pi; // 180 degrees
-        const phi = 0.0;
+        const distance = 4.0;
+        const theta = std.math.pi / 2.0; // 90 degrees
+        const phi = std.math.pi / -2.0;
 
         const camera = rl.Camera3D{
             .position = .{
-                .x = center[0] + distance * std.math.sin(theta) * std.math.cos(phi),
-                .y = center[1] - distance * std.math.cos(theta),
-                .z = center[2] + distance * std.math.sin(theta) * std.math.sin(phi),
+                .x = center[0] + distance * std.math.sin(phi) * std.math.cos(theta),
+                .y = center[1] + distance * std.math.cos(phi),
+                .z = center[2] + distance * std.math.sin(phi) * std.math.sin(theta),
             },
             .target = .{ .x = center[0], .y = center[1], .z = center[2] },
             .up = .{ .x = 0, .y = 1, .z = 0 },
@@ -80,7 +78,7 @@ pub const GameState = struct {
             .camera = camera,
             .cam_state = cam_state,
             .center = center,
-            .radius = radius,
+            .radius = 10.0,
             .splat_data = splat_data,
             .vertex_count = vertex_count,
             .splats = splats,
@@ -91,7 +89,6 @@ pub const GameState = struct {
         const allocator = std.heap.page_allocator;
         allocator.free(self.splats);
         allocator.free(self.splat_data);
-        rl.showCursor();
     }
 
     pub fn update(self: *GameState, dt: f32) void {
@@ -100,8 +97,8 @@ pub const GameState = struct {
         // Wheel for distance
         const wheel = rl.getMouseWheelMove();
         if (wheel != 0) {
-            self.cam_state.distance *= std.math.pow(f32, 0.99, wheel);
-            self.cam_state.distance = std.math.clamp(self.cam_state.distance, self.radius * 0.1, self.radius * 10.0);
+            self.cam_state.distance *= std.math.pow(f32, 0.95, wheel);
+            self.cam_state.distance = std.math.clamp(self.cam_state.distance, 0.1, 50.0);
         }
 
         // Mouse drag for rotation
@@ -109,17 +106,17 @@ pub const GameState = struct {
             const delta = rl.getMouseDelta();
             const sensitivity: f32 = 0.005;
             self.cam_state.theta += delta.x * sensitivity;
-            while (self.cam_state.theta >= 2 * std.math.pi) self.cam_state.theta -= 2 * std.math.pi;
-            while (self.cam_state.theta < 0) self.cam_state.theta += 2 * std.math.pi;
             self.cam_state.phi += delta.y * sensitivity;
-            self.cam_state.phi = std.math.clamp(self.cam_state.phi, -std.math.pi / 2.0, std.math.pi / 2.0);
+            const phi_min = -std.math.pi / 2.0;
+            const phi_max = std.math.pi / 2.0;
+            self.cam_state.phi = std.math.clamp(self.cam_state.phi, phi_min, phi_max);
             rl.setMousePosition(GameState.config.width / 2, GameState.config.height / 2);
         }
 
         // Update camera position
-        const cx = self.cam_state.distance * std.math.sin(self.cam_state.theta) * std.math.cos(self.cam_state.phi);
-        const cy = -self.cam_state.distance * std.math.cos(self.cam_state.theta);
-        const cz = self.cam_state.distance * std.math.sin(self.cam_state.theta) * std.math.sin(self.cam_state.phi);
+        const cx = self.cam_state.distance * std.math.sin(self.cam_state.phi) * std.math.cos(self.cam_state.theta);
+        const cy = self.cam_state.distance * std.math.cos(self.cam_state.phi);
+        const cz = self.cam_state.distance * std.math.sin(self.cam_state.phi) * std.math.sin(self.cam_state.theta);
         self.camera.position = .{ .x = self.center[0] + cx, .y = self.center[1] + cy, .z = self.center[2] + cz };
     }
 
@@ -132,7 +129,7 @@ pub const GameState = struct {
 
         // Render every 20th splat to show whole picture with less resolution
         for (0..self.splats.len) |i| {
-            if (i % 50 != 0) continue;
+            if (i % 500 != 0) continue;
             const s = self.splats[i];
             const r_val = std.math.clamp(s.r * 255, 0, 255);
             const g_val = std.math.clamp(s.g * 255, 0, 255);
