@@ -2,7 +2,8 @@ const Engine = @import("engine/core.zig").Engine;
 const rl = @import("raylib");
 const std = @import("std");
 const Math = @import("engine/math.zig");
-
+const WIDTH = 1280;
+const HEIGHT = 800;
 const CamState = struct {
     distance: f32,
     theta: f32,
@@ -153,8 +154,8 @@ fn initCamera(center: [3]f32) CameraInitResult {
 
 pub const GameState = struct {
     pub const config = .{
-        .width = 1024,
-        .height = 800,
+        .width = WIDTH,
+        .height = HEIGHT,
         .title = "Gaussian Splat Viewer",
         .target_fps = 60,
     };
@@ -166,6 +167,7 @@ pub const GameState = struct {
     vertex_count: usize,
     splats: []Splat,
     skip_factor: usize = 10,
+    buf: [64]u8 = undefined,
 
     pub fn init() !GameState {
         const allocator = std.heap.page_allocator;
@@ -191,8 +193,6 @@ pub const GameState = struct {
     }
 
     pub fn update(self: *GameState, dt: f32) void {
-        _ = dt;
-
         // Wheel for distance
         const wheel = rl.getMouseWheelMove();
         if (wheel != 0) {
@@ -229,8 +229,27 @@ pub const GameState = struct {
         // Key bindings for skip factor
         if (rl.isKeyPressed(rl.KeyboardKey.one)) self.skip_factor = 1;
         if (rl.isKeyPressed(rl.KeyboardKey.two)) self.skip_factor = 10;
-        if (rl.isKeyPressed(rl.KeyboardKey.three)) self.skip_factor = 100;
-        if (rl.isKeyPressed(rl.KeyboardKey.four)) self.skip_factor = 500;
+        if (rl.isKeyPressed(rl.KeyboardKey.three)) self.skip_factor = 50;
+        if (rl.isKeyPressed(rl.KeyboardKey.four)) self.skip_factor = 100;
+
+        // Vertigo effect (Dolly Zoom)
+        if (rl.isKeyDown(rl.KeyboardKey.q) or rl.isKeyDown(rl.KeyboardKey.w)) {
+            const zoom_speed = 30.0 * dt;
+            const current_fov_rad = self.camera.fovy * std.math.pi / 180.0;
+            const view_height = 2.0 * self.cam_state.distance * std.math.tan(current_fov_rad / 2.0);
+
+            if (rl.isKeyDown(rl.KeyboardKey.w)) {
+                self.camera.fovy += zoom_speed;
+            }
+            if (rl.isKeyDown(rl.KeyboardKey.q)) {
+                self.camera.fovy -= zoom_speed;
+            }
+
+            self.camera.fovy = std.math.clamp(self.camera.fovy, 1.0, 110.0);
+
+            const new_fov_rad = self.camera.fovy * std.math.pi / 180.0;
+            self.cam_state.distance = view_height / (2.0 * std.math.tan(new_fov_rad / 2.0));
+        }
 
         // Update camera position
         const cx = self.cam_state.distance * std.math.sin(self.cam_state.phi) * std.math.cos(self.cam_state.theta);
@@ -256,7 +275,7 @@ pub const GameState = struct {
                 .a = s.a,
             };
             const p = rl.Vector3{ .x = s.pos[0], .y = s.pos[1], .z = s.pos[2] };
-            const size = 0.01;
+            const size = 0.005;
             rl.drawTriangle3D(
                 rl.Vector3{ .x = p.x + size, .y = p.y - size, .z = p.z },
                 rl.Vector3{ .x = p.x - size, .y = p.y - size, .z = p.z },
@@ -270,9 +289,8 @@ pub const GameState = struct {
         rl.drawFPS(10, 10);
 
         const num_rendered = if (self.splats.len == 0) 0 else ((self.splats.len - 1) / self.skip_factor) + 1;
-        var buf: [64]u8 = undefined;
-        _ = std.fmt.bufPrintZ(&buf, "Rendered points: {}", .{num_rendered}) catch "Error";
-        rl.drawText(@ptrCast(&buf), 10, 30, 20, rl.Color.white);
+        _ = std.fmt.bufPrintZ(&self.buf, "Rendered points: {}", .{num_rendered}) catch "Error";
+        rl.drawText(@ptrCast(&self.buf), 10, 30, 20, rl.Color.white);
     }
 };
 
