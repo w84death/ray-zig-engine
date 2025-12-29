@@ -3,6 +3,8 @@ const rl = @import("raylib");
 const std = @import("std");
 const Math = @import("engine/math.zig");
 
+const SKIP_FACTOR: usize = 10;
+
 const CamState = struct {
     distance: f32,
     theta: f32,
@@ -165,6 +167,7 @@ pub const GameState = struct {
     splat_data: []u8,
     vertex_count: usize,
     splats: []Splat,
+    rendered_count: usize,
 
     pub fn init() !GameState {
         const allocator = std.heap.page_allocator;
@@ -180,6 +183,7 @@ pub const GameState = struct {
             .splat_data = result.ply_data,
             .vertex_count = result.vertex_count,
             .splats = result.splats,
+            .rendered_count = (result.vertex_count + SKIP_FACTOR - 1) / SKIP_FACTOR,
         };
     }
 
@@ -240,7 +244,7 @@ pub const GameState = struct {
         rl.beginMode3D(self.camera);
 
         for (0..self.splats.len) |i| {
-            if (i % 10 != 0) continue;
+            if (i % SKIP_FACTOR != 0) continue;
             const s = self.splats[i];
             const color = rl.Color{
                 .r = s.r,
@@ -252,6 +256,12 @@ pub const GameState = struct {
         }
 
         rl.endMode3D();
+
+        rl.drawFPS(10, 10);
+
+        var buf: [64]u8 = undefined;
+        _ = std.fmt.bufPrintZ(&buf, "Rendered points: {}", .{self.rendered_count}) catch "Error";
+        rl.drawText(@ptrCast(&buf), 10, 30, 20, rl.Color.white);
     }
 };
 
