@@ -3,8 +3,6 @@ const rl = @import("raylib");
 const std = @import("std");
 const Math = @import("engine/math.zig");
 
-const SKIP_FACTOR: usize = 10;
-
 const CamState = struct {
     distance: f32,
     theta: f32,
@@ -167,7 +165,7 @@ pub const GameState = struct {
     splat_data: []u8,
     vertex_count: usize,
     splats: []Splat,
-    rendered_count: usize,
+    skip_factor: usize = 10,
 
     pub fn init() !GameState {
         const allocator = std.heap.page_allocator;
@@ -183,7 +181,6 @@ pub const GameState = struct {
             .splat_data = result.ply_data,
             .vertex_count = result.vertex_count,
             .splats = result.splats,
-            .rendered_count = (result.vertex_count + SKIP_FACTOR - 1) / SKIP_FACTOR,
         };
     }
 
@@ -229,6 +226,12 @@ pub const GameState = struct {
             self.cam_state.phi = std.math.clamp(self.cam_state.phi, self.cam_state.initial_phi - delta_rad, self.cam_state.initial_phi + delta_rad);
         }
 
+        // Key bindings for skip factor
+        if (rl.isKeyPressed(rl.KeyboardKey.one)) self.skip_factor = 1;
+        if (rl.isKeyPressed(rl.KeyboardKey.two)) self.skip_factor = 10;
+        if (rl.isKeyPressed(rl.KeyboardKey.three)) self.skip_factor = 100;
+        if (rl.isKeyPressed(rl.KeyboardKey.four)) self.skip_factor = 1000;
+
         // Update camera position
         const cx = self.cam_state.distance * std.math.sin(self.cam_state.phi) * std.math.cos(self.cam_state.theta);
         const cy = self.cam_state.distance * std.math.cos(self.cam_state.phi);
@@ -244,7 +247,7 @@ pub const GameState = struct {
         rl.beginMode3D(self.camera);
 
         for (0..self.splats.len) |i| {
-            if (i % SKIP_FACTOR != 0) continue;
+            if (i % self.skip_factor != 0) continue;
             const s = self.splats[i];
             const color = rl.Color{
                 .r = s.r,
@@ -259,8 +262,9 @@ pub const GameState = struct {
 
         rl.drawFPS(10, 10);
 
+        const num_rendered = if (self.splats.len == 0) 0 else ((self.splats.len - 1) / self.skip_factor) + 1;
         var buf: [64]u8 = undefined;
-        _ = std.fmt.bufPrintZ(&buf, "Rendered points: {}", .{self.rendered_count}) catch "Error";
+        _ = std.fmt.bufPrintZ(&buf, "Rendered points: {}", .{num_rendered}) catch "Error";
         rl.drawText(@ptrCast(&buf), 10, 30, 20, rl.Color.white);
     }
 };
