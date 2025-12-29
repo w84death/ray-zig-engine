@@ -14,6 +14,8 @@ const Splat = struct {
     scale: [3]f32,
     r: f32,
     g: f32,
+    b: u8,
+    a: u8,
 };
 
 pub const GameState = struct {
@@ -37,6 +39,7 @@ pub const GameState = struct {
         const vertex_count = splat_data.len / 32;
 
         const f32_data = std.mem.bytesAsSlice(f32, splat_data);
+        const u8_data = splat_data;
         const splats = try allocator.alloc(Splat, vertex_count);
         for (0..vertex_count) |i| {
             const offset = i * 8;
@@ -45,6 +48,8 @@ pub const GameState = struct {
                 .scale = [_]f32{ f32_data[offset + 3], f32_data[offset + 4], f32_data[offset + 5] },
                 .r = f32_data[offset + 6],
                 .g = f32_data[offset + 7],
+                .b = u8_data[offset * 4 + 24],
+                .a = u8_data[offset * 4 + 25],
             };
         }
 
@@ -128,13 +133,14 @@ pub const GameState = struct {
         for (0..self.splats.len) |i| {
             if (i % 100 != 0) continue;
             const s = self.splats[i];
-            const size = 0.05; // small cube size
-            rl.drawLine3D(
-                rl.Vector3{ .x = s.pos[0], .y = s.pos[1], .z = s.pos[2] },
-                rl.Vector3{ .x = s.pos[0], .y = s.pos[1], .z = s.pos[2] + size },
-
-                rl.Color.white,
-            );
+            const pos = rl.Vector3{ .x = s.pos[0], .y = s.pos[1], .z = s.pos[2] };
+            const color = rl.Color{
+                .r = @as(u8, @intFromFloat(std.math.clamp(s.r, 0, 255))),
+                .g = @as(u8, @intFromFloat(std.math.clamp(s.g, 0, 255))),
+                .b = s.b,
+                .a = s.a,
+            };
+            rl.drawPoint3D(pos, color);
         }
 
         rl.endMode3D();
