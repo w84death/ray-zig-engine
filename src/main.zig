@@ -7,8 +7,10 @@ const CamState = struct {
     distance: f32,
     theta: f32,
     phi: f32,
-    initial_theta: f32,
-    initial_phi: f32,
+    dragging: bool = false,
+    mouse_start: rl.Vector2,
+    theta_start: f32,
+    phi_start: f32,
 };
 
 const Splat = struct {
@@ -133,8 +135,10 @@ fn initCamera(center: [3]f32) CameraInitResult {
         .distance = distance,
         .theta = theta,
         .phi = phi,
-        .initial_theta = theta,
-        .initial_phi = phi,
+        .dragging = false,
+        .mouse_start = .{ .x = 0, .y = 0 },
+        .theta_start = theta,
+        .phi_start = phi,
     };
 
     return CameraInitResult{
@@ -192,13 +196,26 @@ pub const GameState = struct {
         }
 
         // Mouse drag for rotation
-        if (rl.isMouseButtonDown(rl.MouseButton.left)) {
-            const delta = rl.getMouseDelta();
-            const sensitivity: f32 = 0.001;
-            self.cam_state.theta += delta.x * sensitivity;
-            self.cam_state.phi += delta.y * sensitivity;
-            self.cam_state.phi = std.math.clamp(self.cam_state.phi, -std.math.pi / 2.0, std.math.pi / 2.0);
-            rl.setMousePosition(GameState.config.width / 2, GameState.config.height / 2);
+        if (rl.isMouseButtonPressed(rl.MouseButton.left)) {
+            self.cam_state.dragging = true;
+            self.cam_state.mouse_start = rl.getMousePosition();
+            self.cam_state.theta_start = self.cam_state.theta;
+            self.cam_state.phi_start = self.cam_state.phi;
+        }
+
+        if (rl.isMouseButtonReleased(rl.MouseButton.left)) {
+            self.cam_state.dragging = false;
+        }
+
+        if (self.cam_state.dragging and rl.isMouseButtonDown(rl.MouseButton.left)) {
+            const current_pos = rl.getMousePosition();
+            const delta_x = current_pos.x - self.cam_state.mouse_start.x;
+            const delta_y = current_pos.y - self.cam_state.mouse_start.y;
+            const sensitivity: f32 = 0.005;
+            self.cam_state.theta = self.cam_state.theta_start - delta_x * sensitivity;
+            self.cam_state.phi = self.cam_state.phi_start + delta_y * sensitivity;
+            const epsilon = 0.01;
+            self.cam_state.phi = std.math.clamp(self.cam_state.phi, -std.math.pi + epsilon, std.math.pi - epsilon);
         }
 
         // Update camera position
