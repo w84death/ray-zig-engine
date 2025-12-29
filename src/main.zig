@@ -7,6 +7,8 @@ const CamState = struct {
     distance: f32,
     theta: f32,
     phi: f32,
+    initial_theta: f32,
+    initial_phi: f32,
     dragging: bool = false,
     mouse_start: rl.Vector2,
     theta_start: f32,
@@ -135,6 +137,8 @@ fn initCamera(center: [3]f32) CameraInitResult {
         .distance = distance,
         .theta = theta,
         .phi = phi,
+        .initial_theta = theta,
+        .initial_phi = phi,
         .dragging = false,
         .mouse_start = .{ .x = 0, .y = 0 },
         .theta_start = theta,
@@ -211,11 +215,14 @@ pub const GameState = struct {
             const current_pos = rl.getMousePosition();
             const delta_x = current_pos.x - self.cam_state.mouse_start.x;
             const delta_y = current_pos.y - self.cam_state.mouse_start.y;
-            const sensitivity: f32 = 0.005;
-            self.cam_state.theta = self.cam_state.theta_start - delta_x * sensitivity;
+            const sensitivity: f32 = 0.001;
+            self.cam_state.theta = self.cam_state.theta_start + delta_x * sensitivity;
             self.cam_state.phi = self.cam_state.phi_start + delta_y * sensitivity;
-            const epsilon = 0.01;
-            self.cam_state.phi = std.math.clamp(self.cam_state.phi, -std.math.pi + epsilon, std.math.pi - epsilon);
+            self.cam_state.theta = std.math.clamp(self.cam_state.theta, -std.math.pi, std.math.pi);
+            self.cam_state.phi = std.math.clamp(self.cam_state.phi, -std.math.pi / 2.0, std.math.pi / 2.0);
+            const delta_rad: f32 = 20.0 * std.math.pi / 180.0;
+            self.cam_state.theta = std.math.clamp(self.cam_state.theta, self.cam_state.initial_theta - delta_rad, self.cam_state.initial_theta + delta_rad);
+            self.cam_state.phi = std.math.clamp(self.cam_state.phi, self.cam_state.initial_phi - delta_rad, self.cam_state.initial_phi + delta_rad);
         }
 
         // Update camera position
@@ -235,14 +242,13 @@ pub const GameState = struct {
         for (0..self.splats.len) |i| {
             if (i % 10 != 0) continue;
             const s = self.splats[i];
-            const pos = rl.Vector3{ .x = s.pos[0], .y = s.pos[1], .z = s.pos[2] };
             const color = rl.Color{
                 .r = s.r,
                 .g = s.g,
                 .b = s.b,
                 .a = s.a,
             };
-            rl.drawPoint3D(pos, color);
+            rl.drawPoint3D(rl.Vector3{ .x = s.pos[0], .y = s.pos[1], .z = s.pos[2] }, color);
         }
 
         rl.endMode3D();
