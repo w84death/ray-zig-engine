@@ -34,10 +34,12 @@ pub const GameState = struct {
     splat_data: []u8,
     vertex_count: usize,
     splats: []Splat,
+    model_theta: f32,
+    model_phi: f32,
 
     pub fn init() !GameState {
         const allocator = std.heap.page_allocator;
-        const ply_data = try std.fs.cwd().readFileAlloc(allocator, "assets/example.ply", std.math.maxInt(usize));
+        const ply_data = try std.fs.cwd().readFileAlloc(allocator, "assets/input.ply", std.math.maxInt(usize));
 
         // Find header end
         const header_end = std.mem.indexOf(u8, ply_data, "end_header") orelse return error.InvalidPly;
@@ -113,7 +115,7 @@ pub const GameState = struct {
                     .a = a,
                 };
                 i += 1;
-                if (i % 10000 == 0 or i == vertex_count) std.debug.print("Loaded {}/{} vertices\n", .{ i, vertex_count });
+                if (i % 50000 == 0 or i == vertex_count) std.debug.print("Loaded {}/{} vertices\n", .{ i, vertex_count });
                 if (i == vertex_count) break;
             }
             std.debug.print("Finished loading {} vertices from ASCII PLY\n", .{vertex_count});
@@ -152,11 +154,8 @@ pub const GameState = struct {
             std.debug.print("Finished loading {} vertices from binary PLY\n", .{vertex_count});
         }
 
-        rl.setMousePosition(GameState.config.width / 2, GameState.config.height / 2);
-        rl.hideCursor();
-
         const center: [3]f32 = [_]f32{ 0, 0, 0 };
-        const distance = 4.0;
+        const distance = 1.0;
         const theta = std.math.pi / 2.0; // 90 degrees
         const phi = std.math.pi / -2.0;
 
@@ -188,6 +187,8 @@ pub const GameState = struct {
             .splat_data = ply_data,
             .vertex_count = vertex_count,
             .splats = splats,
+            .model_theta = 0,
+            .model_phi = 0,
         };
     }
 
@@ -203,26 +204,23 @@ pub const GameState = struct {
         // Wheel for distance
         const wheel = rl.getMouseWheelMove();
         if (wheel != 0) {
-            self.cam_state.distance *= std.math.pow(f32, 0.95, wheel);
-            self.cam_state.distance = std.math.clamp(self.cam_state.distance, 0.1, 50.0);
+            self.cam_state.distance *= std.math.pow(f32, 0.9, wheel);
+            self.cam_state.distance = std.math.clamp(self.cam_state.distance, 0.1, 4.0);
         }
 
         // Mouse drag for rotation
         if (rl.isMouseButtonDown(rl.MouseButton.left)) {
             const delta = rl.getMouseDelta();
             const sensitivity: f32 = 0.001;
-            self.cam_state.theta += delta.x * sensitivity;
-            self.cam_state.phi += delta.y * sensitivity;
-            // Restrict rotation to small amounts relative to initial
-            self.cam_state.theta = std.math.clamp(self.cam_state.theta, self.cam_state.initial_theta - std.math.pi / 4.0, self.cam_state.initial_theta + std.math.pi / 4.0);
-            self.cam_state.phi = std.math.clamp(self.cam_state.phi, self.cam_state.initial_phi - std.math.pi / 4.0, self.cam_state.initial_phi + std.math.pi / 4.0);
+            self.model_theta += delta.x * sensitivity;
+            self.model_phi += delta.y * sensitivity;
             rl.setMousePosition(GameState.config.width / 2, GameState.config.height / 2);
         }
 
         // Update camera position
-        const cx = self.cam_state.distance * std.math.sin(self.cam_state.phi) * std.math.cos(self.cam_state.theta);
-        const cy = self.cam_state.distance * std.math.cos(self.cam_state.phi);
-        const cz = self.cam_state.distance * std.math.sin(self.cam_state.phi) * std.math.sin(self.cam_state.theta);
+        const cx = self.cam_state.distance * std.math.sin(self.cam_state.initial_phi) * std.math.cos(self.cam_state.initial_theta);
+        const cy = self.cam_state.distance * std.math.cos(self.cam_state.initial_phi);
+        const cz = self.cam_state.distance * std.math.sin(self.cam_state.initial_phi) * std.math.sin(self.cam_state.initial_theta);
         self.camera.position = .{ .x = self.center[0] + cx, .y = self.center[1] + cy, .z = self.center[2] + cz };
     }
 
@@ -236,7 +234,24 @@ pub const GameState = struct {
         for (0..self.splats.len) |i| {
             if (i % 10 != 0) continue;
             const s = self.splats[i];
-            const pos = rl.Vector3{ .x = s.pos[0], .y = s.pos[1], .z = s.pos[2] };
+            var x = s.pos[0];
+            var y = s.pos[1];
+            var z = s.pos[2];
+            // Rotate around Y (theta)
+            const ct = std.math.cos(self.model_theta);
+            const st = std.math.sin(self.model_theta);
+            const x1 = x * ct + z * st;
+            const z1 = -x * st + z * ct;
+            x = x1;
+            z = z1;
+            // Rotate around X (phi)
+            const cp = std.math.cos(self.model_phi);
+            const sp = std.math.sin(self.model_phi);
+            const y1 = y * cp + z * sp;
+            const z2 = -y * sp + z * cp;
+            y = y1;
+            z = z2;
+            const pos = rl.Vector3{ .x = x, .y = y, .z = z };
             const color = rl.Color{
                 .r = @as(u8, @intFromFloat(std.math.clamp(s.r, 0, 255))),
                 .g = @as(u8, @intFromFloat(std.math.clamp(s.g, 0, 255))),
