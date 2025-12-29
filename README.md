@@ -1,4 +1,4 @@
-# Raylib/Zig Engine
+# Gaussian Splat Viewer
 
 By Krzysztof Krystian Jankowski
 
@@ -6,12 +6,11 @@ By Krzysztof Krystian Jankowski
 
 ## About
 
+A 3D Gaussian splat viewer built with Raylib and Zig.
+
 ## Tech
 - Zig Lang
 - Raylib
-- Japan Image and Audio Disks
-- Gimp
-- Zed
 
 ## Building
 ```
@@ -20,11 +19,4 @@ zig build -Doptimize=ReleaseSmall upx
 zig build -Dtarget=x86_64-windows -Doptimize=ReleaseSmall
 ```
 
-## Images Sources
-- Tenkei Koubou - Trees Textures 1
-- Image Land - Clouds Vol.1
-- VisualDisk N-3 Mountains
-- VisualDisk N-4 The Sun
-
-## Audio Sources
-- GU - Onsai - Royalty Free Digital Sound Library
+## License
